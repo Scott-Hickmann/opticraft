@@ -9,9 +9,3 @@ export interface Ray {
   update: () => void;
   cleanup: () => void;
 }
-
-export interface RayOptions {
-  origin: THREE.Vector3;
-  direction: THREE.Vector3;
-  color?: number;
-}

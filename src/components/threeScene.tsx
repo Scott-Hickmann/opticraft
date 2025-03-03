@@ -4,9 +4,10 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 
+import { createPointLight } from '@/lib/objects/createPointLight';
+
 import { createCube } from '../lib/objects/createCube';
 import { createLens } from '../lib/objects/createLens';
-import { createRay } from '../lib/objects/createRay';
 import { ThreeSceneProps } from '../lib/types';
 
 const ThreeScene = ({ width, height }: ThreeSceneProps) => {
@@ -52,16 +53,11 @@ const ThreeScene = ({ width, height }: ThreeSceneProps) => {
     scene.add(...objects.map((o) => o.mesh));
 
     // Create rays
-    const rays = [
-      createRay(scene, objects, {
-        origin: new THREE.Vector3(0, 0, 0),
-        direction: new THREE.Vector3(1, 0, 0)
-      }),
-      createRay(scene, objects, {
-        origin: new THREE.Vector3(0, 2, 0),
-        direction: new THREE.Vector3(1, 0, 0)
-      })
-    ];
+    const pointLight = createPointLight(scene, objects, {
+      origin: new THREE.Vector3(0, 0, 0),
+      numDirections: 16
+    });
+    const rays = [pointLight];
 
     // Add lights
     const light = new THREE.DirectionalLight(0xffffff, 1);

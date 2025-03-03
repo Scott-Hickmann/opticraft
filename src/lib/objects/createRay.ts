@@ -1,7 +1,13 @@
 import * as THREE from 'three';
 
 import { calculateRefraction } from '../physics/rayPhysics';
-import { Object, Ray, RayOptions } from './types';
+import { Object, Ray } from './types';
+
+export interface RayOptions {
+  origin: THREE.Vector3;
+  direction: THREE.Vector3;
+  color?: number;
+}
 
 export function createRay(
   scene: THREE.Scene,
@@ -20,14 +26,21 @@ export function createRay(
   const raycaster = new THREE.Raycaster();
   const rayMaterial = new THREE.LineBasicMaterial({ color });
 
+  // Add arrow helper configuration
+  const arrowLength = 0.2; // Reduced from 0.3
+  const headLength = 0.08; // Explicit head length instead of using arrowLength * 0.5
+  const arrowWidth = 0.08; // Reduced from 0.1
+
   return {
     update: () => {
       // Clear previous segments
       while (rayGroup.children.length) {
         const child = rayGroup.children[0];
-        if (child instanceof THREE.Line) {
-          child.geometry.dispose();
-          child.material.dispose();
+        if (child instanceof THREE.Line || child instanceof THREE.ArrowHelper) {
+          if (child instanceof THREE.Line) {
+            child.geometry.dispose();
+            child.material.dispose();
+          }
         }
         rayGroup.remove(child);
       }
@@ -50,9 +63,36 @@ export function createRay(
           const intersection = intersects[0];
           const hitPoint = intersection.point.clone();
 
+          // Create line segment
           segmentGeometry.setFromPoints([currentOrigin, hitPoint]);
           const lineSegment = new THREE.Line(segmentGeometry, rayMaterial);
           rayGroup.add(lineSegment);
+
+          // Add arrow at middle of segment
+          const midPoint = new THREE.Vector3().lerpVectors(
+            currentOrigin,
+            hitPoint,
+            0.5
+          );
+          const segmentDirection = hitPoint
+            .clone()
+            .sub(currentOrigin)
+            .normalize();
+
+          // Offset the arrow position backwards by half the arrow length
+          const arrowPosition = midPoint
+            .clone()
+            .sub(segmentDirection.clone().multiplyScalar(arrowLength * 0.5));
+
+          const arrow = new THREE.ArrowHelper(
+            segmentDirection,
+            arrowPosition, // Use offset position
+            arrowLength,
+            color,
+            headLength,
+            arrowWidth
+          );
+          rayGroup.add(arrow);
 
           const normal =
             intersection.face?.normal.clone() || new THREE.Vector3();
@@ -87,12 +127,36 @@ export function createRay(
             .addScaledVector(currentDirection, 0.001);
           bounces++;
         } else {
+          const rayLength = 1000; // Define a fixed length for the final ray segment
           const farPoint = currentOrigin
             .clone()
-            .add(currentDirection.clone().multiplyScalar(1000));
+            .add(currentDirection.clone().multiplyScalar(rayLength));
+
+          // Create line segment
           segmentGeometry.setFromPoints([currentOrigin, farPoint]);
           const lineSegment = new THREE.Line(segmentGeometry, rayMaterial);
           rayGroup.add(lineSegment);
+
+          // Add arrow at a reasonable distance
+          const arrowDistance = 5;
+          const midPoint = new THREE.Vector3().lerpVectors(
+            currentOrigin,
+            farPoint,
+            arrowDistance / rayLength
+          );
+          const arrowPosition = midPoint
+            .clone()
+            .sub(currentDirection.clone().multiplyScalar(arrowLength * 0.5));
+
+          const arrow = new THREE.ArrowHelper(
+            currentDirection,
+            arrowPosition,
+            arrowLength,
+            color,
+            headLength,
+            arrowWidth
+          );
+          rayGroup.add(arrow);
           break;
         }
       }
@@ -100,9 +164,11 @@ export function createRay(
     cleanup: () => {
       while (rayGroup.children.length) {
         const child = rayGroup.children[0];
-        if (child instanceof THREE.Line) {
-          child.geometry.dispose();
-          child.material.dispose();
+        if (child instanceof THREE.Line || child instanceof THREE.ArrowHelper) {
+          if (child instanceof THREE.Line) {
+            child.geometry.dispose();
+            child.material.dispose();
+          }
         }
         rayGroup.remove(child);
       }
