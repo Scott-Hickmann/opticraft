@@ -13,13 +13,21 @@ const WebGLCanvas = () => {
     lastY: 0
   });
 
-  // Setup render loop
+  // Setup render loop with rotation
   const setupRenderLoop = useCallback((renderer: WebGLRenderer) => {
     let animationFrameId: number;
+    let rotationX = 0;
+    let rotationY = 0;
 
     const render = () => {
       renderer.clear();
-      renderer.drawSquare();
+
+      // Update rotation
+      rotationX += 0.01;
+      rotationY += 0.02;
+      renderer.setRotation(rotationX, rotationY);
+
+      renderer.drawCube();
       animationFrameId = requestAnimationFrame(render);
     };
 
@@ -74,8 +82,9 @@ const WebGLCanvas = () => {
         if (!drag.isDragging || !renderer) return;
 
         const transform = renderer.getTransform();
-        const dx = ((e.clientX - drag.lastX) / canvas.width) * 2;
-        const dy = (-(e.clientY - drag.lastY) / canvas.height) * 2;
+        // Reduced multiplier from 8 to 3 for more controlled movement
+        const dx = ((e.clientX - drag.lastX) / canvas.width) * 6.7;
+        const dy = (-(e.clientY - drag.lastY) / canvas.height) * 6.7;
 
         renderer.setTranslation(
           transform.translateX + dx,
