@@ -55,18 +55,25 @@ const WebGLCanvas = () => {
       const lens = new Lens(renderer.getContext(), program);
 
       // Create a ray
-      const ray = new Ray(
+      const ray1 = new Ray(
         renderer.getContext(),
         program,
         [0, 0, 0], // origin
         [1, 0, 0] // direction (pointing along x-axis)
       );
 
+      const ray2 = new Ray(
+        renderer.getContext(),
+        program,
+        [0, 1, 0], // origin
+        [1, 0, 0] // direction (pointing along x-axis)
+      );
+
       const scene = renderer.getScene();
       scene.addObject(cube, { translateX: 1 });
       scene.addObject(lens, { translateY: 0.7 });
-      scene.addObject(ray);
-
+      scene.addObject(ray1);
+      scene.addObject(ray2);
       // Select the cube for manipulation
       renderer.selectObject(0);
 

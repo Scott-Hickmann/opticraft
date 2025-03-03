@@ -37,13 +37,6 @@ export class Ray implements RenderableObject {
       
       void main() {
         vec4 worldPos = uModelMatrix * vec4(aPosition, 1.0);
-        
-        // If this is the endpoint (second vertex), extend it to infinity
-        if (aPosition != vec3(0.0, 0.0, 0.0)) {
-          // Use direction vector instead of position for the second point
-          worldPos = uModelMatrix * vec4(aPosition - vec3(0.0, 0.0, 0.0), 0.0);
-        }
-        
         gl_Position = uProjectionMatrix * uViewMatrix * worldPos;
         vColor = aColor;
       }
@@ -77,7 +70,13 @@ export class Ray implements RenderableObject {
   }
 
   private init(): void {
-    // Only need origin and a point in the direction
+    // Create vertices for infinite ray (will be updated if intersection occurs)
+    const farPoint = [
+      this.origin[0] + this.direction[0] * 1000.0,
+      this.origin[1] + this.direction[1] * 1000.0,
+      this.origin[2] + this.direction[2] * 1000.0
+    ];
+
     const vertices = new Float32Array([
       // Origin point (red)
       this.origin[0],
@@ -86,10 +85,10 @@ export class Ray implements RenderableObject {
       1.0,
       0.0,
       0.0,
-      // Direction point (yellow) - will be extended in shader
-      this.origin[0] + this.direction[0],
-      this.origin[1] + this.direction[1],
-      this.origin[2] + this.direction[2],
+      // Far point (yellow)
+      farPoint[0],
+      farPoint[1],
+      farPoint[2],
       1.0,
       1.0,
       0.0
@@ -102,10 +101,45 @@ export class Ray implements RenderableObject {
     gl: WebGLContext,
     projectionMatrix: Float32Array,
     viewMatrix: Float32Array,
-    modelMatrix: Float32Array
+    modelMatrix: Float32Array,
+    cubePosition?: [number, number, number]
   ): void {
     // Draw the line
     if (!this.program || !this.buffer) return;
+
+    // Check for intersection if cube position is provided
+    let intersectionDistance: number | null = null;
+    if (cubePosition) {
+      intersectionDistance = this.intersectCube(cubePosition);
+      if (intersectionDistance !== null) {
+        // Update the vertex buffer with intersection point
+        const intersectionPoint: [number, number, number] = [
+          this.origin[0] + this.direction[0] * intersectionDistance,
+          this.origin[1] + this.direction[1] * intersectionDistance,
+          this.origin[2] + this.direction[2] * intersectionDistance
+        ];
+
+        const vertices = new Float32Array([
+          // Origin point (red)
+          this.origin[0],
+          this.origin[1],
+          this.origin[2],
+          1.0,
+          0.0,
+          0.0,
+          // Intersection point (yellow)
+          intersectionPoint[0],
+          intersectionPoint[1],
+          intersectionPoint[2],
+          1.0,
+          1.0,
+          0.0
+        ]);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+      }
+    }
 
     gl.useProgram(this.program);
 
@@ -134,8 +168,31 @@ export class Ray implements RenderableObject {
 
     gl.drawArrays(gl.LINES, 0, 2);
 
-    // Draw the origin sphere
-    this.originSphere.draw(gl, projectionMatrix, viewMatrix, modelMatrix);
+    // Create a translation matrix for the sphere at the ray origin
+    const sphereMatrix = new Float32Array(modelMatrix);
+
+    // Apply the ray's origin position through the model matrix
+    const originVec = [this.origin[0], this.origin[1], this.origin[2], 1.0];
+
+    // Transform the origin by the model matrix (preserving scene transformations)
+    sphereMatrix[12] =
+      modelMatrix[0] * originVec[0] +
+      modelMatrix[4] * originVec[1] +
+      modelMatrix[8] * originVec[2] +
+      modelMatrix[12];
+    sphereMatrix[13] =
+      modelMatrix[1] * originVec[0] +
+      modelMatrix[5] * originVec[1] +
+      modelMatrix[9] * originVec[2] +
+      modelMatrix[13];
+    sphereMatrix[14] =
+      modelMatrix[2] * originVec[0] +
+      modelMatrix[6] * originVec[1] +
+      modelMatrix[10] * originVec[2] +
+      modelMatrix[14];
+
+    // Draw the origin sphere with its own transform
+    this.originSphere.draw(gl, projectionMatrix, viewMatrix, sphereMatrix);
   }
 
   // Method to update ray direction
@@ -156,5 +213,55 @@ export class Ray implements RenderableObject {
 
   public getOrigin(): [number, number, number] {
     return this.origin;
+  }
+
+  public intersectCube(
+    cubePosition: [number, number, number],
+    cubeSize: number = 1.0
+  ): number | null {
+    // Transform ray to cube's local space
+    const localOrigin: [number, number, number] = [
+      this.origin[0] - cubePosition[0],
+      this.origin[1] - cubePosition[1],
+      this.origin[2] - cubePosition[2]
+    ];
+
+    const halfSize = cubeSize / 2;
+    const bounds = {
+      min: [-halfSize, -halfSize, -halfSize],
+      max: [halfSize, halfSize, halfSize]
+    };
+
+    // Check intersection with axis-aligned bounding box
+    let tmin = -Infinity;
+    let tmax = Infinity;
+
+    for (let i = 0; i < 3; i++) {
+      if (Math.abs(this.direction[i]) < 1e-8) {
+        // Ray is parallel to slab
+        if (localOrigin[i] < bounds.min[i] || localOrigin[i] > bounds.max[i]) {
+          return null; // No intersection
+        }
+      } else {
+        // Calculate intersection with slab
+        const invD = 1.0 / this.direction[i];
+        let t1 = (bounds.min[i] - localOrigin[i]) * invD;
+        let t2 = (bounds.max[i] - localOrigin[i]) * invD;
+
+        if (t1 > t2) {
+          [t1, t2] = [t2, t1];
+        }
+
+        tmin = Math.max(tmin, t1);
+        tmax = Math.min(tmax, t2);
+
+        if (tmin > tmax) {
+          return null; // No intersection
+        }
+      }
+    }
+
+    // Return the nearest intersection point (tmin)
+    return tmin > 0 ? tmin : null;
   }
 }

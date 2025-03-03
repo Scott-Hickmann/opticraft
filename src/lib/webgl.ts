@@ -1,3 +1,4 @@
+import { Ray } from './objects/ray';
 import { Scene } from './scene';
 import { type Transform } from './types';
 import { type WebGLContext } from './types';
@@ -40,9 +41,28 @@ export class WebGLRenderer {
     );
     const viewMatrix = this.createViewMatrix([0, 0, 4], [0, 0, 0], [0, 1, 0]);
 
+    // Get cube position from first object (assuming it's the cube)
+    const cubeTransform = this.scene.getObjects()[0].transform;
+    const cubePosition: [number, number, number] = [
+      cubeTransform.translateX,
+      cubeTransform.translateY,
+      0 // Z position
+    ];
+
+    // Draw all objects
     for (const { object, transform } of this.scene.getObjects()) {
       const modelMatrix = this.createModelMatrix(transform);
-      object.draw(this.gl, projectionMatrix, viewMatrix, modelMatrix);
+      if (object instanceof Ray) {
+        object.draw(
+          this.gl,
+          projectionMatrix,
+          viewMatrix,
+          modelMatrix,
+          cubePosition
+        );
+      } else {
+        object.draw(this.gl, projectionMatrix, viewMatrix, modelMatrix);
+      }
     }
   }
 
