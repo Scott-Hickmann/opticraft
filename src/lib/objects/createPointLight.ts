@@ -44,7 +44,11 @@ export function createPointLight(
     })
   );
 
+  const light = new THREE.PointLight(0xe7e7e7, 2.5, 250, 0);
+  light.position.copy(origin);
+
   return {
+    light,
     update: () => {
       rays.forEach((ray) => ray.update());
     },

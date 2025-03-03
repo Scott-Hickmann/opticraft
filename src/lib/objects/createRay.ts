@@ -17,11 +17,11 @@ export function createRay(
   const rayGroup = new THREE.Group();
   scene.add(rayGroup);
 
-  const sphereGeometry = new THREE.SphereGeometry(0.05);
-  const sphereMaterial = new THREE.MeshPhongMaterial({ color });
-  const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-  sphere.position.copy(origin);
-  scene.add(sphere);
+  // const sphereGeometry = new THREE.SphereGeometry(0.05);
+  // const sphereMaterial = new THREE.MeshPhongMaterial({ color });
+  // const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+  // sphere.position.copy(origin);
+  // scene.add(sphere);
 
   const raycaster = new THREE.Raycaster();
   const rayMaterial = new THREE.LineBasicMaterial({ color });
@@ -173,9 +173,9 @@ export function createRay(
         rayGroup.remove(child);
       }
       scene.remove(rayGroup);
-      sphereGeometry.dispose();
-      sphereMaterial.dispose();
-      scene.remove(sphere);
+      // sphereGeometry.dispose();
+      // sphereMaterial.dispose();
+      // scene.remove(sphere);
     }
   };
 }

@@ -6,6 +6,7 @@ export interface Object {
 }
 
 export interface Ray {
+  light?: THREE.PointLight;
   update: () => void;
   cleanup: () => void;
 }
