@@ -7,10 +7,14 @@ export class WebGLRenderer {
     translateY: number;
     rotateX: number;
     rotateY: number;
+    lastRotateX: number;
+    lastRotateY: number;
   };
   private program: WebGLProgram | null = null;
   private buffer: WebGLBuffer | null = null;
   private indexBuffer: WebGLBuffer | null = null;
+  private lensBuffer: WebGLBuffer | null = null;
+  private lensIndexBuffer: WebGLBuffer | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -26,7 +30,9 @@ export class WebGLRenderer {
       translateX: 0.0,
       translateY: 0.0,
       rotateX: 0.0,
-      rotateY: 0.0
+      rotateY: 0.0,
+      lastRotateX: 0.0,
+      lastRotateY: 0.0
     };
     this.init();
   }
@@ -340,7 +346,7 @@ export class WebGLRenderer {
   }
 
   private createModelMatrix(): Float32Array {
-    // Create rotation matrices
+    // Use rotateX/Y for the matrix instead of lastRotate values
     const cx = Math.cos(this.transform.rotateX);
     const sx = Math.sin(this.transform.rotateX);
     const cy = Math.cos(this.transform.rotateY);
@@ -371,6 +377,8 @@ export class WebGLRenderer {
   public setRotation(x: number, y: number): void {
     this.transform.rotateX = x;
     this.transform.rotateY = y;
+    this.transform.lastRotateX = x;
+    this.transform.lastRotateY = y;
   }
 
   // Methods to update transformations
@@ -384,7 +392,150 @@ export class WebGLRenderer {
   }
 
   public getTransform() {
-    return { ...this.transform };
+    return {
+      ...this.transform,
+      // Ensure we return the actual rotation values
+      rotateX: this.transform.rotateX,
+      rotateY: this.transform.rotateY
+    };
+  }
+
+  private createLensVertices(
+    radius: number = 1,
+    height: number = 0.2,
+    segments: number = 32
+  ): { vertices: Float32Array; indices: Uint16Array } {
+    const vertices: number[] = [];
+    const indices: number[] = [];
+
+    // Center vertices (top and bottom)
+    vertices.push(0, height, 0, 0, 1, 1); // Top center
+    vertices.push(0, -height, 0, 0, 1, 1); // Bottom center
+
+    // Generate the circular vertices
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+
+      // Calculate curved surface y-coordinates
+      const curveHeight =
+        Math.sqrt(Math.max(0, radius * radius - x * x - z * z)) * height;
+
+      // Top rim vertex
+      vertices.push(x, curveHeight, z, 0, 1, 1);
+      // Bottom rim vertex
+      vertices.push(x, -curveHeight, z, 0, 1, 1);
+
+      // Generate indices for triangles
+      if (i < segments) {
+        const baseIndex = 2 + i * 2; // Skip center vertices
+
+        // Top face
+        indices.push(0, baseIndex, baseIndex + 2);
+
+        // Bottom face
+        indices.push(1, baseIndex + 3, baseIndex + 1);
+
+        // Side faces
+        indices.push(baseIndex, baseIndex + 1, baseIndex + 2);
+        indices.push(baseIndex + 1, baseIndex + 3, baseIndex + 2);
+      }
+    }
+
+    return {
+      vertices: new Float32Array(vertices),
+      indices: new Uint16Array(indices)
+    };
+  }
+
+  private initLensProgram(): void {
+    if (!this.program) return;
+
+    const { vertices, indices } = this.createLensVertices(0.3, 0.1, 32);
+
+    this.lensBuffer = this.createBuffer(vertices);
+    this.lensIndexBuffer = this.gl.createBuffer();
+
+    if (!this.lensIndexBuffer) return;
+
+    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.lensIndexBuffer);
+    this.gl.bufferData(
+      this.gl.ELEMENT_ARRAY_BUFFER,
+      indices,
+      this.gl.STATIC_DRAW
+    );
+  }
+
+  public drawLens(): void {
+    if (!this.program) {
+      this.initCubeProgram(); // Reuse the same shader program
+      this.initLensProgram();
+    }
+    if (!this.program || !this.lensBuffer || !this.lensIndexBuffer) return;
+
+    this.gl.useProgram(this.program);
+
+    // Set up vertex attributes
+    const stride = 24; // 6 floats per vertex (3 position + 3 color)
+
+    const positionLoc = this.gl.getAttribLocation(this.program, 'aPosition');
+    const colorLoc = this.gl.getAttribLocation(this.program, 'aColor');
+
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.lensBuffer);
+    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.lensIndexBuffer);
+
+    this.gl.vertexAttribPointer(
+      positionLoc,
+      3,
+      this.gl.FLOAT,
+      false,
+      stride,
+      0
+    );
+    this.gl.vertexAttribPointer(colorLoc, 3, this.gl.FLOAT, false, stride, 12);
+
+    this.gl.enableVertexAttribArray(positionLoc);
+    this.gl.enableVertexAttribArray(colorLoc);
+
+    // Use the same matrices as the cube but translate up
+    const aspect = this.canvas.width / this.canvas.height;
+    const projectionMatrix = this.createPerspectiveMatrix(
+      45,
+      aspect,
+      0.1,
+      100.0
+    );
+    const viewMatrix = this.createViewMatrix([0, 0, 4], [0, 0, 0], [0, 1, 0]);
+
+    // Create a modified model matrix for the lens (moved up)
+    const lensModelMatrix = new Float32Array(this.createModelMatrix());
+    lensModelMatrix[13] += 0.7; // Move up by 0.7 units
+
+    const projectionLoc = this.gl.getUniformLocation(
+      this.program,
+      'uProjectionMatrix'
+    );
+    const viewLoc = this.gl.getUniformLocation(this.program, 'uViewMatrix');
+    const modelLoc = this.gl.getUniformLocation(this.program, 'uModelMatrix');
+
+    this.gl.uniformMatrix4fv(projectionLoc, false, projectionMatrix);
+    this.gl.uniformMatrix4fv(viewLoc, false, viewMatrix);
+    this.gl.uniformMatrix4fv(modelLoc, false, lensModelMatrix);
+
+    // Draw the lens
+    this.gl.drawElements(
+      this.gl.TRIANGLES,
+      this.createLensVertices().indices.length,
+      this.gl.UNSIGNED_SHORT,
+      0
+    );
+  }
+
+  public drawScene(): void {
+    this.clear();
+    // this.drawCube();
+    this.drawLens();
   }
 }
 

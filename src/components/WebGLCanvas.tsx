@@ -9,25 +9,18 @@ const WebGLCanvas = () => {
   const rendererRef = useRef<WebGLRenderer | null>(null);
   const dragRef = useRef({
     isDragging: false,
+    isRotating: false,
     lastX: 0,
     lastY: 0
   });
 
-  // Setup render loop with rotation
+  // Setup render loop without rotation
   const setupRenderLoop = useCallback((renderer: WebGLRenderer) => {
     let animationFrameId: number;
-    let rotationX = 0;
-    let rotationY = 0;
 
     const render = () => {
       renderer.clear();
-
-      // Update rotation
-      rotationX += 0.01;
-      rotationY += 0.02;
-      renderer.setRotation(rotationX, rotationY);
-
-      renderer.drawCube();
+      renderer.drawScene();
       animationFrameId = requestAnimationFrame(render);
     };
 
@@ -75,6 +68,7 @@ const WebGLCanvas = () => {
         drag.isDragging = true;
         drag.lastX = e.clientX;
         drag.lastY = e.clientY;
+        drag.isRotating = e.shiftKey;
         canvas.style.cursor = 'grabbing';
       };
 
@@ -82,14 +76,27 @@ const WebGLCanvas = () => {
         if (!drag.isDragging || !renderer) return;
 
         const transform = renderer.getTransform();
-        // Reduced multiplier from 8 to 3 for more controlled movement
-        const dx = ((e.clientX - drag.lastX) / canvas.width) * 6.7;
-        const dy = (-(e.clientY - drag.lastY) / canvas.height) * 6.7;
 
-        renderer.setTranslation(
-          transform.translateX + dx,
-          transform.translateY + dy
-        );
+        if (e.shiftKey && drag.isRotating) {
+          // Handle rotation
+          const rotationSpeed = 0.01;
+          const dx = -(e.clientX - drag.lastX) * rotationSpeed;
+          const dy = -(e.clientY - drag.lastY) * rotationSpeed;
+
+          renderer.setRotation(
+            transform.lastRotateX + dy,
+            transform.lastRotateY + dx
+          );
+        } else {
+          // Handle translation only
+          const dx = ((e.clientX - drag.lastX) / canvas.width) * 6.7;
+          const dy = (-(e.clientY - drag.lastY) / canvas.height) * 6.7;
+
+          renderer.setTranslation(
+            transform.translateX + dx,
+            transform.translateY + dy
+          );
+        }
 
         drag.lastX = e.clientX;
         drag.lastY = e.clientY;
@@ -97,6 +104,7 @@ const WebGLCanvas = () => {
 
       const handleMouseUp = () => {
         drag.isDragging = false;
+        drag.isRotating = false; // Reset rotation state
         canvas.style.cursor = 'grab';
       };
 
