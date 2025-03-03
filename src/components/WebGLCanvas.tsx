@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import { Cube } from '@/lib/objects/cube';
 import { Lens } from '@/lib/objects/lens';
+import { Ray } from '@/lib/objects/ray';
 import { createShaderProgram } from '@/lib/shader';
 import { WebGLRenderer } from '@/lib/webgl';
 
@@ -53,9 +54,18 @@ const WebGLCanvas = () => {
       const cube = new Cube(renderer.getContext(), program);
       const lens = new Lens(renderer.getContext(), program);
 
+      // Create a ray
+      const ray = new Ray(
+        renderer.getContext(),
+        program,
+        [0, 0, 0], // origin
+        [1, 0, 0] // direction (pointing along x-axis)
+      );
+
       const scene = renderer.getScene();
-      scene.addObject(cube);
+      scene.addObject(cube, { translateX: 1 });
       scene.addObject(lens, { translateY: 0.7 });
+      scene.addObject(ray);
 
       // Select the cube for manipulation
       renderer.selectObject(0);
