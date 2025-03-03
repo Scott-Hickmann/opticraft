@@ -1,54 +1,61 @@
+import { Scene } from './scene';
+import { type Transform } from './types';
+import { type WebGLContext } from './types';
+import { cross, dot, normalize, subtract } from './utils';
+
 export class WebGLRenderer {
-  private gl: WebGLRenderingContext;
-  private canvas: HTMLCanvasElement;
-  private transform: {
-    scale: number;
-    translateX: number;
-    translateY: number;
-    rotateX: number;
-    rotateY: number;
-    lastRotateX: number;
-    lastRotateY: number;
-  };
-  private program: WebGLProgram | null = null;
-  private buffer: WebGLBuffer | null = null;
-  private indexBuffer: WebGLBuffer | null = null;
-  private lensBuffer: WebGLBuffer | null = null;
-  private lensIndexBuffer: WebGLBuffer | null = null;
+  private gl: WebGLContext;
+  private scene: Scene;
+  private selectedObject: number = 0;
 
-  constructor(canvas: HTMLCanvasElement) {
-    this.canvas = canvas;
+  constructor(private canvas: HTMLCanvasElement) {
     const gl = canvas.getContext('webgl');
-
-    if (!gl) {
-      throw new Error('WebGL not supported');
-    }
+    if (!gl) throw new Error('WebGL not supported');
 
     this.gl = gl;
-    this.transform = {
-      scale: 1.0,
-      translateX: 0.0,
-      translateY: 0.0,
-      rotateX: 0.0,
-      rotateY: 0.0,
-      lastRotateX: 0.0,
-      lastRotateY: 0.0
-    };
+    this.scene = new Scene();
     this.init();
   }
 
   private init(): void {
-    // Set viewport to match canvas size
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-
-    // Set clear color to black
     this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
     this.gl.enable(this.gl.DEPTH_TEST);
     this.gl.enable(this.gl.CULL_FACE);
   }
 
-  public clear(): void {
+  public getScene(): Scene {
+    return this.scene;
+  }
+
+  public render(): void {
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+
+    const aspect = this.canvas.width / this.canvas.height;
+    const projectionMatrix = this.createPerspectiveMatrix(
+      45,
+      aspect,
+      0.1,
+      100.0
+    );
+    const viewMatrix = this.createViewMatrix([0, 0, 4], [0, 0, 0], [0, 1, 0]);
+
+    for (const { object, transform } of this.scene.getObjects()) {
+      const modelMatrix = this.createModelMatrix(transform);
+      object.draw(this.gl, projectionMatrix, viewMatrix, modelMatrix);
+    }
+  }
+
+  public getContext(): WebGLContext {
+    return this.gl;
+  }
+
+  public setTransform(transform: Partial<Transform>): void {
+    this.scene.updateSceneTransform(transform);
+  }
+
+  public getTransform(): Transform {
+    return this.scene.getSceneTransform();
   }
 
   // Helper function to create and compile shaders
@@ -102,11 +109,6 @@ export class WebGLRenderer {
     return buffer;
   }
 
-  // Getter for WebGL context
-  public getContext(): WebGLRenderingContext {
-    return this.gl;
-  }
-
   // Resize canvas and viewport
   public resize(width: number, height: number): void {
     this.canvas.width = width;
@@ -114,175 +116,14 @@ export class WebGLRenderer {
     this.gl.viewport(0, 0, width, height);
   }
 
-  private createCubeProgram(): WebGLProgram | null {
-    const vsSource = `
-      attribute vec3 aPosition;
-      attribute vec3 aColor;
-      
-      uniform mat4 uModelMatrix;
-      uniform mat4 uViewMatrix;
-      uniform mat4 uProjectionMatrix;
-      
-      varying vec3 vColor;
-      
-      void main() {
-        gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * vec4(aPosition, 1.0);
-        vColor = aColor;
-      }
-    `;
-
-    const fsSource = `
-      precision mediump float;
-      varying vec3 vColor;
-      
-      void main() {
-        gl_FragColor = vec4(vColor, 1.0);
-      }
-    `;
-
-    const vertexShader = this.createShader(this.gl.VERTEX_SHADER, vsSource);
-    const fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fsSource);
-
-    if (!vertexShader || !fragmentShader) return null;
-    return this.createProgram(vertexShader, fragmentShader);
-  }
-
-  private initCubeProgram(): void {
-    if (this.program) return;
-
-    this.program = this.createCubeProgram();
-    if (!this.program) return;
-
-    // Define cube vertices and colors
-    const vertices = new Float32Array([
-      // Front face
-      -0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 0.5, 0.5,
-      0.5, 1.0, 0.0, 0.0, -0.5, 0.5, 0.5, 1.0, 0.0, 0.0,
-
-      // Back face
-      -0.5, -0.5, -0.5, 0.0, 1.0, 0.0, -0.5, 0.5, -0.5, 0.0, 1.0, 0.0, 0.5, 0.5,
-      -0.5, 0.0, 1.0, 0.0, 0.5, -0.5, -0.5, 0.0, 1.0, 0.0,
-
-      // Top face
-      -0.5, 0.5, -0.5, 0.0, 0.0, 1.0, -0.5, 0.5, 0.5, 0.0, 0.0, 1.0, 0.5, 0.5,
-      0.5, 0.0, 0.0, 1.0, 0.5, 0.5, -0.5, 0.0, 0.0, 1.0,
-
-      // Bottom face
-      -0.5, -0.5, -0.5, 1.0, 1.0, 0.0, 0.5, -0.5, -0.5, 1.0, 1.0, 0.0, 0.5,
-      -0.5, 0.5, 1.0, 1.0, 0.0, -0.5, -0.5, 0.5, 1.0, 1.0, 0.0,
-
-      // Right face
-      0.5, -0.5, -0.5, 1.0, 0.0, 1.0, 0.5, 0.5, -0.5, 1.0, 0.0, 1.0, 0.5, 0.5,
-      0.5, 1.0, 0.0, 1.0, 0.5, -0.5, 0.5, 1.0, 0.0, 1.0,
-
-      // Left face
-      -0.5, -0.5, -0.5, 0.0, 1.0, 1.0, -0.5, -0.5, 0.5, 0.0, 1.0, 1.0, -0.5,
-      0.5, 0.5, 0.0, 1.0, 1.0, -0.5, 0.5, -0.5, 0.0, 1.0, 1.0
-    ]);
-
-    // Define indices for the cube faces
-    const indices = new Uint16Array([
-      0,
-      1,
-      2,
-      0,
-      2,
-      3, // front
-      4,
-      5,
-      6,
-      4,
-      6,
-      7, // back
-      8,
-      9,
-      10,
-      8,
-      10,
-      11, // top
-      12,
-      13,
-      14,
-      12,
-      14,
-      15, // bottom
-      16,
-      17,
-      18,
-      16,
-      18,
-      19, // right
-      20,
-      21,
-      22,
-      20,
-      22,
-      23 // left
-    ]);
-
-    this.buffer = this.createBuffer(vertices);
-    this.indexBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-    this.gl.bufferData(
-      this.gl.ELEMENT_ARRAY_BUFFER,
-      indices,
-      this.gl.STATIC_DRAW
-    );
-  }
-
-  public drawCube(): void {
-    if (!this.program) {
-      this.initCubeProgram();
+  public selectObject(index: number): void {
+    if (index >= 0 && index < this.scene.getObjects().length) {
+      this.selectedObject = index;
     }
-    if (!this.program || !this.buffer) return;
+  }
 
-    this.gl.useProgram(this.program);
-
-    // Set up vertex attributes
-    const stride = 24; // 6 floats per vertex (3 position + 3 color)
-
-    const positionLoc = this.gl.getAttribLocation(this.program, 'aPosition');
-    const colorLoc = this.gl.getAttribLocation(this.program, 'aColor');
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-
-    this.gl.vertexAttribPointer(
-      positionLoc,
-      3,
-      this.gl.FLOAT,
-      false,
-      stride,
-      0
-    );
-    this.gl.vertexAttribPointer(colorLoc, 3, this.gl.FLOAT, false, stride, 12);
-
-    this.gl.enableVertexAttribArray(positionLoc);
-    this.gl.enableVertexAttribArray(colorLoc);
-
-    // Create and set matrices
-    const aspect = this.canvas.width / this.canvas.height;
-    const projectionMatrix = this.createPerspectiveMatrix(
-      45,
-      aspect,
-      0.1,
-      100.0
-    );
-    const viewMatrix = this.createViewMatrix([0, 0, 4], [0, 0, 0], [0, 1, 0]);
-    const modelMatrix = this.createModelMatrix();
-
-    const projectionLoc = this.gl.getUniformLocation(
-      this.program,
-      'uProjectionMatrix'
-    );
-    const viewLoc = this.gl.getUniformLocation(this.program, 'uViewMatrix');
-    const modelLoc = this.gl.getUniformLocation(this.program, 'uModelMatrix');
-
-    this.gl.uniformMatrix4fv(projectionLoc, false, projectionMatrix);
-    this.gl.uniformMatrix4fv(viewLoc, false, viewMatrix);
-    this.gl.uniformMatrix4fv(modelLoc, false, modelMatrix);
-
-    // Draw the cube
-    this.gl.drawElements(this.gl.TRIANGLES, 36, this.gl.UNSIGNED_SHORT, 0);
+  public getSelectedObject(): number {
+    return this.selectedObject;
   }
 
   // Matrix creation helpers
@@ -320,7 +161,6 @@ export class WebGLRenderer {
     target: number[],
     up: number[]
   ): Float32Array {
-    // Simplified view matrix for this example
     const z = normalize(subtract(eye, target));
     const x = normalize(cross(up, z));
     const y = cross(z, x);
@@ -345,13 +185,37 @@ export class WebGLRenderer {
     ]);
   }
 
-  private createModelMatrix(): Float32Array {
-    // Use rotateX/Y for the matrix instead of lastRotate values
-    const cx = Math.cos(this.transform.rotateX);
-    const sx = Math.sin(this.transform.rotateX);
-    const cy = Math.cos(this.transform.rotateY);
-    const sy = Math.sin(this.transform.rotateY);
-    const s = this.transform.scale;
+  private createModelMatrix(objectTransform: Transform): Float32Array {
+    const sceneTransform = this.scene.getSceneTransform();
+
+    // Calculate scene rotation matrix
+    const cx = Math.cos(sceneTransform.rotateX);
+    const sx = Math.sin(sceneTransform.rotateX);
+    const cy = Math.cos(sceneTransform.rotateY);
+    const sy = Math.sin(sceneTransform.rotateY);
+
+    // First apply object's local transform
+    const localX = objectTransform.translateX;
+    const localY = objectTransform.translateY;
+    const localScale = objectTransform.scale;
+
+    // Get rotation pivot point (cursor position)
+    const pivotX = sceneTransform.pivotX || 0;
+    const pivotY = sceneTransform.pivotY || 0;
+
+    // Apply rotation around pivot point
+    const dx = localX - pivotX;
+    const dy = localY - pivotY;
+
+    const rotX = dx * cy + dy * sx * sy;
+    const rotY = dy * cx;
+    const rotZ = dx * sy - dy * sx * cy;
+
+    // Finally apply scene scale and translation
+    const s = sceneTransform.scale * localScale;
+    const tx = (rotX + pivotX) * s + sceneTransform.translateX;
+    const ty = (rotY + pivotY) * s + sceneTransform.translateY;
+    const tz = rotZ * s;
 
     return new Float32Array([
       cy * s,
@@ -366,197 +230,45 @@ export class WebGLRenderer {
       sx * s,
       cx * cy * s,
       0,
-      this.transform.translateX,
-      this.transform.translateY,
-      -2,
+      tx,
+      ty,
+      tz,
       1
     ]);
   }
 
-  // Update methods
-  public setRotation(x: number, y: number): void {
-    this.transform.rotateX = x;
-    this.transform.rotateY = y;
-    this.transform.lastRotateX = x;
-    this.transform.lastRotateY = y;
+  // Update methods for transformations
+  public setScale(scale: number): void {
+    const transform = this.getTransform();
+    this.setTransform({
+      ...transform,
+      scale: Math.max(0.1, Math.min(10.0, scale)) // Limit scale range
+    });
   }
 
-  // Methods to update transformations
-  public setScale(scale: number): void {
-    this.transform.scale = Math.max(0.1, Math.min(10.0, scale)); // Limit scale range
+  public setRotation(x: number, y: number): void {
+    const transform = this.getTransform();
+    this.setTransform({
+      ...transform,
+      rotateX: x,
+      rotateY: y,
+      lastRotateX: x,
+      lastRotateY: y
+    });
   }
 
   public setTranslation(x: number, y: number): void {
-    this.transform.translateX = x;
-    this.transform.translateY = y;
+    const transform = this.getTransform();
+    console.log('Setting translation:', {
+      x,
+      y,
+      currentTransform: transform,
+      selectedObject: this.selectedObject
+    });
+    this.setTransform({
+      ...transform,
+      translateX: x,
+      translateY: y
+    });
   }
-
-  public getTransform() {
-    return {
-      ...this.transform,
-      // Ensure we return the actual rotation values
-      rotateX: this.transform.rotateX,
-      rotateY: this.transform.rotateY
-    };
-  }
-
-  private createLensVertices(
-    radius: number = 1,
-    height: number = 0.2,
-    segments: number = 32
-  ): { vertices: Float32Array; indices: Uint16Array } {
-    const vertices: number[] = [];
-    const indices: number[] = [];
-
-    // Center vertices (top and bottom)
-    vertices.push(0, height, 0, 0, 1, 1); // Top center
-    vertices.push(0, -height, 0, 0, 1, 1); // Bottom center
-
-    // Generate the circular vertices
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      const x = Math.cos(angle) * radius;
-      const z = Math.sin(angle) * radius;
-
-      // Calculate curved surface y-coordinates
-      const curveHeight =
-        Math.sqrt(Math.max(0, radius * radius - x * x - z * z)) * height;
-
-      // Top rim vertex
-      vertices.push(x, curveHeight, z, 0, 1, 1);
-      // Bottom rim vertex
-      vertices.push(x, -curveHeight, z, 0, 1, 1);
-
-      // Generate indices for triangles
-      if (i < segments) {
-        const baseIndex = 2 + i * 2; // Skip center vertices
-
-        // Top face
-        indices.push(0, baseIndex, baseIndex + 2);
-
-        // Bottom face
-        indices.push(1, baseIndex + 3, baseIndex + 1);
-
-        // Side faces
-        indices.push(baseIndex, baseIndex + 1, baseIndex + 2);
-        indices.push(baseIndex + 1, baseIndex + 3, baseIndex + 2);
-      }
-    }
-
-    return {
-      vertices: new Float32Array(vertices),
-      indices: new Uint16Array(indices)
-    };
-  }
-
-  private initLensProgram(): void {
-    if (!this.program) return;
-
-    const { vertices, indices } = this.createLensVertices(0.3, 0.1, 32);
-
-    this.lensBuffer = this.createBuffer(vertices);
-    this.lensIndexBuffer = this.gl.createBuffer();
-
-    if (!this.lensIndexBuffer) return;
-
-    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.lensIndexBuffer);
-    this.gl.bufferData(
-      this.gl.ELEMENT_ARRAY_BUFFER,
-      indices,
-      this.gl.STATIC_DRAW
-    );
-  }
-
-  public drawLens(): void {
-    if (!this.program) {
-      this.initCubeProgram(); // Reuse the same shader program
-      this.initLensProgram();
-    }
-    if (!this.program || !this.lensBuffer || !this.lensIndexBuffer) return;
-
-    this.gl.useProgram(this.program);
-
-    // Set up vertex attributes
-    const stride = 24; // 6 floats per vertex (3 position + 3 color)
-
-    const positionLoc = this.gl.getAttribLocation(this.program, 'aPosition');
-    const colorLoc = this.gl.getAttribLocation(this.program, 'aColor');
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.lensBuffer);
-    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.lensIndexBuffer);
-
-    this.gl.vertexAttribPointer(
-      positionLoc,
-      3,
-      this.gl.FLOAT,
-      false,
-      stride,
-      0
-    );
-    this.gl.vertexAttribPointer(colorLoc, 3, this.gl.FLOAT, false, stride, 12);
-
-    this.gl.enableVertexAttribArray(positionLoc);
-    this.gl.enableVertexAttribArray(colorLoc);
-
-    // Use the same matrices as the cube but translate up
-    const aspect = this.canvas.width / this.canvas.height;
-    const projectionMatrix = this.createPerspectiveMatrix(
-      45,
-      aspect,
-      0.1,
-      100.0
-    );
-    const viewMatrix = this.createViewMatrix([0, 0, 4], [0, 0, 0], [0, 1, 0]);
-
-    // Create a modified model matrix for the lens (moved up)
-    const lensModelMatrix = new Float32Array(this.createModelMatrix());
-    lensModelMatrix[13] += 0.7; // Move up by 0.7 units
-
-    const projectionLoc = this.gl.getUniformLocation(
-      this.program,
-      'uProjectionMatrix'
-    );
-    const viewLoc = this.gl.getUniformLocation(this.program, 'uViewMatrix');
-    const modelLoc = this.gl.getUniformLocation(this.program, 'uModelMatrix');
-
-    this.gl.uniformMatrix4fv(projectionLoc, false, projectionMatrix);
-    this.gl.uniformMatrix4fv(viewLoc, false, viewMatrix);
-    this.gl.uniformMatrix4fv(modelLoc, false, lensModelMatrix);
-
-    // Draw the lens
-    this.gl.drawElements(
-      this.gl.TRIANGLES,
-      this.createLensVertices().indices.length,
-      this.gl.UNSIGNED_SHORT,
-      0
-    );
-  }
-
-  public drawScene(): void {
-    this.clear();
-    // this.drawCube();
-    this.drawLens();
-  }
-}
-
-// Vector math helpers
-function normalize(v: number[]): number[] {
-  const length = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-  return [v[0] / length, v[1] / length, v[2] / length];
-}
-
-function subtract(a: number[], b: number[]): number[] {
-  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-}
-
-function cross(a: number[], b: number[]): number[] {
-  return [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0]
-  ];
-}
-
-function dot(a: number[], b: number[]): number {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }

@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 
+import { Cube } from '@/lib/objects/cube';
+import { Lens } from '@/lib/objects/lens';
+import { createShaderProgram } from '@/lib/shader';
 import { WebGLRenderer } from '@/lib/webgl';
 
 const WebGLCanvas = () => {
@@ -10,22 +13,25 @@ const WebGLCanvas = () => {
   const dragRef = useRef({
     isDragging: false,
     isRotating: false,
+    wasRotating: false,
     lastX: 0,
     lastY: 0
   });
+  const animationFrameIdRef = useRef<number | undefined>(undefined);
 
   // Setup render loop without rotation
   const setupRenderLoop = useCallback((renderer: WebGLRenderer) => {
-    let animationFrameId: number;
-
     const render = () => {
-      renderer.clear();
-      renderer.drawScene();
-      animationFrameId = requestAnimationFrame(render);
+      renderer.render();
+      animationFrameIdRef.current = requestAnimationFrame(render);
     };
 
     render();
-    return () => cancelAnimationFrame(animationFrameId);
+    return () => {
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -33,16 +39,40 @@ const WebGLCanvas = () => {
     if (!canvas) return;
 
     try {
-      rendererRef.current = new WebGLRenderer(canvas);
-      const renderer = rendererRef.current;
-      const drag = dragRef.current;
+      // Initialize renderer
+      const renderer = new WebGLRenderer(canvas);
+      rendererRef.current = renderer;
+
+      // Create shared program
+      const program = createShaderProgram(renderer.getContext());
+      if (!program) {
+        throw new Error('Failed to create shader program');
+      }
+
+      // Create and add objects to scene
+      const cube = new Cube(renderer.getContext(), program);
+      const lens = new Lens(renderer.getContext(), program);
+
+      const scene = renderer.getScene();
+      scene.addObject(cube);
+      scene.addObject(lens, { translateY: 0.7 });
+
+      // Select the cube for manipulation
+      renderer.selectObject(0);
+
+      // Start render loop
+      const cleanup = setupRenderLoop(renderer);
 
       // Event handlers
       const handleWheel = (e: WheelEvent) => {
         e.preventDefault();
+        const renderer = rendererRef.current;
         if (!renderer) return;
 
         const transform = renderer.getTransform();
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
         const rect = canvas.getBoundingClientRect();
 
         // Calculate mouse position in clip space
@@ -65,32 +95,66 @@ const WebGLCanvas = () => {
       };
 
       const handleMouseDown = (e: MouseEvent) => {
-        drag.isDragging = true;
-        drag.lastX = e.clientX;
-        drag.lastY = e.clientY;
-        drag.isRotating = e.shiftKey;
+        dragRef.current.isDragging = true;
+        dragRef.current.lastX = e.clientX;
+        dragRef.current.lastY = e.clientY;
+        dragRef.current.isRotating = e.shiftKey;
         canvas.style.cursor = 'grabbing';
       };
 
       const handleMouseMove = (e: MouseEvent) => {
-        if (!drag.isDragging || !renderer) return;
+        if (!dragRef.current.isDragging || !rendererRef.current) return;
 
-        const transform = renderer.getTransform();
+        const renderer = rendererRef.current;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
 
-        if (e.shiftKey && drag.isRotating) {
+        // Check if rotation mode has changed
+        const isRotating = e.shiftKey && dragRef.current.isRotating;
+        if (isRotating !== dragRef.current.wasRotating) {
+          // Mode changed, update last position to prevent jumps
+          dragRef.current.lastX = e.clientX;
+          dragRef.current.lastY = e.clientY;
+          dragRef.current.wasRotating = isRotating;
+          return;
+        }
+
+        if (isRotating) {
           // Handle rotation
           const rotationSpeed = 0.01;
-          const dx = -(e.clientX - drag.lastX) * rotationSpeed;
-          const dy = -(e.clientY - drag.lastY) * rotationSpeed;
+          const dx = -(e.clientX - dragRef.current.lastX) * rotationSpeed;
+          const dy = -(e.clientY - dragRef.current.lastY) * rotationSpeed;
 
-          renderer.setRotation(
-            transform.lastRotateX + dy,
-            transform.lastRotateY + dx
-          );
+          // Convert cursor position to clip space
+          const rect = canvas.getBoundingClientRect();
+          const pivotX = ((e.clientX - rect.left) / canvas.width) * 2 - 1;
+          const pivotY = (1 - (e.clientY - rect.top) / canvas.height) * 2 - 1;
+
+          const transform = renderer.getTransform();
+          renderer.setTransform({
+            ...transform,
+            rotateX: transform.rotateX + dy,
+            rotateY: transform.rotateY + dx,
+            lastRotateX: transform.rotateX + dy,
+            lastRotateY: transform.rotateY + dx,
+            pivotX,
+            pivotY
+          });
         } else {
-          // Handle translation only
-          const dx = ((e.clientX - drag.lastX) / canvas.width) * 6.7;
-          const dy = (-(e.clientY - drag.lastY) / canvas.height) * 6.7;
+          // Handle translation
+          const dx = ((e.clientX - dragRef.current.lastX) / canvas.width) * 6.7;
+          const dy =
+            (-(e.clientY - dragRef.current.lastY) / canvas.height) * 6.7;
+
+          const transform = renderer.getTransform();
+          console.log('Translation:', {
+            dx,
+            dy,
+            transform,
+            mouseX: e.clientX,
+            lastX: dragRef.current.lastX,
+            width: canvas.width
+          });
 
           renderer.setTranslation(
             transform.translateX + dx,
@@ -98,13 +162,13 @@ const WebGLCanvas = () => {
           );
         }
 
-        drag.lastX = e.clientX;
-        drag.lastY = e.clientY;
+        dragRef.current.lastX = e.clientX;
+        dragRef.current.lastY = e.clientY;
       };
 
       const handleMouseUp = () => {
-        drag.isDragging = false;
-        drag.isRotating = false; // Reset rotation state
+        dragRef.current.isDragging = false;
+        dragRef.current.isRotating = false; // Reset rotation state
         canvas.style.cursor = 'grab';
       };
 
@@ -115,10 +179,7 @@ const WebGLCanvas = () => {
       canvas.addEventListener('mouseup', handleMouseUp);
       canvas.addEventListener('mouseleave', handleMouseUp);
 
-      // Start render loop
-      const cleanup = setupRenderLoop(renderer);
-
-      // Cleanup
+      // Cleanup function
       return () => {
         cleanup();
         canvas.removeEventListener('wheel', handleWheel);
