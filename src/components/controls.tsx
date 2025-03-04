@@ -10,6 +10,7 @@ import { Layer } from '@/lib/config';
 
 import { useStore } from './store';
 
+const TRANSLATE_KEY = 't';
 const ROTATE_KEY = 'r';
 const SCALE_KEY = 's';
 const TRANSLATE_SNAP_AMOUNT = 0.5;
@@ -48,10 +49,11 @@ export const Controls = () => {
     if (!activeComponent) {
       return;
     }
-    setMode('translate');
-    setSnap(false);
     // Keyboard controls, shift hold to rotate, alt hold to scale
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === TRANSLATE_KEY) {
+        setMode('translate');
+      }
       if (event.key === ROTATE_KEY) {
         setMode('rotate');
       }
@@ -59,7 +61,7 @@ export const Controls = () => {
         setMode('scale');
       }
       if (event.key === 'Shift') {
-        setSnap(true);
+        setSnap((snap) => !snap);
       }
       if (event.key === 'Backspace' || event.key === 'Delete') {
         if (activeComponent) {
@@ -67,22 +69,9 @@ export const Controls = () => {
         }
       }
     };
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.key === ROTATE_KEY) {
-        setMode('translate');
-      }
-      if (event.key === SCALE_KEY) {
-        setMode('translate');
-      }
-      if (event.key === 'Shift') {
-        setSnap(false);
-      }
-    };
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
     };
   }, [activeComponent, removeComponent]);
 

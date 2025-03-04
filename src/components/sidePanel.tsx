@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { Component } from './component';
+import { canScale, Component } from './component';
 import styles from './sidePanel.module.css';
 import { useStore } from './store';
 
@@ -93,7 +93,7 @@ const ComponentEditor = ({ activeComponent }: ComponentEditorProps) => {
               }}
             />
           )}
-          {activeComponent.props.scale && (
+          {activeComponent.props.scale && canScale(activeComponent.type) && (
             <Vector3
               value={[
                 activeComponent.props.scale.x,

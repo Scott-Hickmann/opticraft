@@ -34,6 +34,7 @@ export const Header = () => {
     <div className={styles.header}>
       <HeaderItem label="Beam Block" type="beamBlock" />
       <HeaderItem label="Mirror" type="mirror" />
+      <HeaderItem label="Ray" type="ray" />
     </div>
   );
 };
