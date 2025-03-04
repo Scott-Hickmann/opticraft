@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/Addons.js';
+import { OrbitControls, TransformControls } from 'three/examples/jsm/Addons.js';
 
 import { createPointLight } from '@/lib/objects/createPointLight';
 
@@ -52,7 +52,7 @@ const ThreeScene = ({ width, height }: ThreeSceneProps) => {
     // Setup
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ canvas });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setSize(width, height, false);
 
     const controls = new OrbitControls(camera, canvas);
@@ -155,20 +155,23 @@ const ThreeScene = ({ width, height }: ThreeSceneProps) => {
 
     camera.position.z = 4;
 
-    // Add big cube in the center
-    const bigCube = createCube({
-      position: new THREE.Vector3(0, 0, 0),
-      rotation: new THREE.Euler(0, 0, 0),
-      scale: new THREE.Vector3(10, 10, 10)
+    const control = new TransformControls(camera, renderer.domElement);
+    // control.addEventListener('change', render);
+    control.addEventListener('dragging-changed', function (event) {
+      controls.enabled = !event.value;
     });
-    scene.add(bigCube.mesh);
+    control.attach(mirrorSphere);
+    const gizmo = control.getHelper();
+    control.mode = 'translate';
+    control.setTranslationSnap(1);
+    scene.add(gizmo);
 
     // Add this function to update material properties
-    const updateMaterial = (metalness: number) => {
-      mirrorSphereMaterial.metalness = metalness;
-      mirrorSphereMaterial.transmission = 1.0 - metalness;
-      mirrorSphereMaterial.envMapIntensity = metalness;
-    };
+    // const updateMaterial = (metalness: number) => {
+    //   mirrorSphereMaterial.metalness = metalness;
+    //   mirrorSphereMaterial.transmission = 1.0 - metalness;
+    //   mirrorSphereMaterial.envMapIntensity = metalness;
+    // };
 
     // Animation loop
     let animationFrameId: number;
@@ -176,9 +179,8 @@ const ThreeScene = ({ width, height }: ThreeSceneProps) => {
       animationFrameId = requestAnimationFrame(animate);
 
       // Example: Oscillate between glass and mirror
-      const t = (Math.sin(Date.now() * 0.001) + 1) * 0.5; // 0 to 1
-      console.log(t);
-      updateMaterial(t);
+      // const t = (Math.sin(Date.now() * 0.001) + 1) * 0.5; // 0 to 1
+      // updateMaterial(t);
 
       // Hide the mirror sphere before updating the cube camera
       mirrorSphere.visible = false;
