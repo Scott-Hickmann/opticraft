@@ -1,6 +1,8 @@
 import '@react-three/fiber';
 
 import { MeshReflectorMaterial } from '@react-three/drei';
+// import { MeshReflectorMaterial as MeshReflectorMaterialImpl } from '@react-three/drei/materials/MeshReflectorMaterial';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useRef } from 'react';
 import * as THREE from 'three';
 
@@ -18,6 +20,19 @@ export interface MirrorProps {
 const SIDE_COLOR = 0x0000ff;
 
 function MainFace() {
+  const scene = useThree((state) => state.scene);
+
+  useFrame(({ scene }) => {
+    const metaLayer = new THREE.Layers();
+    metaLayer.set(Layer.OBJECTS);
+    const metaObjects = scene.children.filter(
+      (child) => !metaLayer.test(child.layers)
+    );
+    metaObjects.forEach((object) => {
+      object.visible = true;
+    });
+  });
+
   return (
     <>
       {/* Front Planes */}
@@ -39,11 +54,24 @@ function MainFace() {
       </mesh>
 
       {/* Front mirror */}
-      <mesh position={[0, 0, OBJECT_DEPTH / 2]}>
+      <mesh position={[0, 0, OBJECT_DEPTH / 2]} name="mirror">
         <planeGeometry
           args={[1 - 2 * OBJECT_PADDING, 1 - 2 * OBJECT_PADDING]}
         />
-        <MeshReflectorMaterial resolution={2048} mirror={1} />
+        <MeshReflectorMaterial
+          resolution={2048}
+          mirror={1}
+          onBeforeRender={() => {
+            const metaLayer = new THREE.Layers();
+            metaLayer.set(Layer.OBJECTS);
+            const metaObjects = scene.children.filter(
+              (child) => !metaLayer.test(child.layers)
+            );
+            metaObjects.forEach((object) => {
+              object.visible = false;
+            });
+          }}
+        />
       </mesh>
     </>
   );

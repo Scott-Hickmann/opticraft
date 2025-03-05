@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import * as THREE from 'three';
 
 import { Layer } from '@/lib/config';
+import { useRay } from '@/lib/ray';
 
 import { useStore } from './store';
 
@@ -27,6 +28,15 @@ export function Ray({
   const { onObjectClick, onObjectMissed } = useStore();
   const rayRef = useRef<THREE.Group>(null);
 
+  // Compute direction from rotation - create unit vector along Z and rotate it
+  const direction = new THREE.Vector3(0, 1, 0).applyEuler(rotation).normalize();
+
+  useRay({
+    origin: position,
+    direction,
+    color: RAY_COLOR
+  });
+
   return (
     <group
       ref={rayRef}
@@ -35,7 +45,7 @@ export function Ray({
       position={position}
       rotation={rotation}
       scale={scale}
-      layers={Layer.OBJECTS}
+      layers={Layer.META}
       name={name}
     >
       {/* Sphere at origin */}

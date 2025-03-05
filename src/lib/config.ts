@@ -1,7 +1,7 @@
 export enum Layer {
-  OBJECTS = 0,
-  VISUALIZATIONS = 1,
-  META = 2
+  OBJECTS = 1,
+  VISUALIZATIONS = 2,
+  META = 3
 }
 
 export const OBJECT_DEPTH = 0.1;
