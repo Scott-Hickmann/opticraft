@@ -1,9 +1,10 @@
-import WebGLCanvas from '@/components/webGLCanvas';
+import { CanvasScene } from '@/components/scene';
+import { StoreProvider } from '@/components/store';
 
 export default function Home() {
   return (
-    <main>
-      <WebGLCanvas />
-    </main>
+    <StoreProvider>
+      <CanvasScene />
+    </StoreProvider>
   );
 }
