@@ -1,9 +1,10 @@
 import { BeamBlock, BeamBlockProps } from './beamBlock';
+import { BeamSplitter, BeamSplitterProps } from './beamSplitter';
 import { Mirror, MirrorProps } from './mirror';
 import { Ray, RayProps } from './ray';
-
 const typeToReactComponent = {
   beamBlock: BeamBlock,
+  beamSplitter: BeamSplitter,
   mirror: Mirror,
   ray: Ray
 } as const;
@@ -34,6 +35,16 @@ export type RayComponent = {
   props: Omit<RayProps, 'name'>;
 };
 
+export type BeamSplitterComponent = {
+  key: string;
+  type: 'beamSplitter';
+  props: Omit<BeamSplitterProps, 'name'>;
+};
+
 export type ComponentType = keyof typeof typeToReactComponent;
 
-export type Component = BeamBlockComponent | MirrorComponent | RayComponent;
+export type Component =
+  | BeamBlockComponent
+  | BeamSplitterComponent
+  | MirrorComponent
+  | RayComponent;

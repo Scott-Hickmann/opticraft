@@ -1,9 +1,10 @@
 'use client';
 
 import { OrbitControls, TransformControls } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
-import { useEffect, useState } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { TransformControls as TransformControlsImpl } from 'three-stdlib';
 import { useDebounceCallback } from 'usehooks-ts';
 
 import { Layer } from '@/lib/config';
@@ -36,6 +37,8 @@ export const Controls = () => {
   const scene = useThree((state) => state.scene);
   const activeComponent = active ? getComponent(active) : null;
 
+  const transformControlsRef = useRef<TransformControlsImpl>(null);
+
   useEffect(() => {
     if (activeComponent) {
       const object = scene.getObjectByName(activeComponent.key);
@@ -63,11 +66,6 @@ export const Controls = () => {
       if (event.key === 'Shift') {
         setSnap((snap) => !snap);
       }
-      if (event.key === 'Backspace' || event.key === 'Delete') {
-        if (activeComponent) {
-          removeComponent(activeComponent.key);
-        }
-      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
@@ -93,13 +91,23 @@ export const Controls = () => {
     { maxWait: 100 }
   );
 
+  useFrame(() => {
+    if (transformControlsRef.current) {
+      transformControlsRef.current.traverse((child) => {
+        child.layers.set(Layer.META);
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (transformControlsRef.current as any).raycaster.layers.set(Layer.META);
+    }
+  });
+
   return (
     <>
       {/* Controls */}
       <OrbitControls ref={controlsRef} enableDamping />
       {activeComponent && activeObject && (
         <TransformControls
-          layers={Layer.META}
+          ref={transformControlsRef}
           mode={mode}
           object={activeObject}
           onMouseDown={() => {

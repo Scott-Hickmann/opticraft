@@ -3,7 +3,7 @@ import '@react-three/fiber';
 import { useRef } from 'react';
 import * as THREE from 'three';
 
-import { Layer, OBJECT_DEPTH, OBJECT_PADDING } from '@/lib/config';
+import { OBJECT_DEPTH, OBJECT_PADDING } from '@/lib/config';
 
 import { useStore } from './store';
 
@@ -12,12 +12,11 @@ export interface BeamBlockProps {
   position?: THREE.Vector3;
   rotation?: THREE.Euler;
   scale?: THREE.Vector3;
-  color?: THREE.ColorRepresentation;
 }
 
 const SIDE_COLOR = 0xff0000;
 
-function MainFace({ color }: { color: THREE.ColorRepresentation }) {
+function MainFace() {
   return (
     <>
       {/* Front Planes */}
@@ -43,7 +42,7 @@ function MainFace({ color }: { color: THREE.ColorRepresentation }) {
         <planeGeometry
           args={[1 - 2 * OBJECT_PADDING, 1 - 2 * OBJECT_PADDING]}
         />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={0x000000} />
       </mesh>
     </>
   );
@@ -53,8 +52,7 @@ export function BeamBlock({
   name,
   position = new THREE.Vector3(),
   rotation = new THREE.Euler(),
-  scale = new THREE.Vector3(1, 1, 1),
-  color = 0x000000
+  scale = new THREE.Vector3(1, 1, 1)
 }: BeamBlockProps) {
   const { onObjectClick, onObjectMissed } = useStore();
   const mirrorRef = useRef<THREE.Group>(null);
@@ -67,7 +65,6 @@ export function BeamBlock({
       position={position}
       rotation={rotation}
       scale={scale}
-      layers={Layer.OBJECTS}
       name={name}
     >
       {/* Side Planes */}
@@ -89,10 +86,13 @@ export function BeamBlock({
       </mesh>
 
       {/* Front plane */}
-      <MainFace color={color} />
-      <group rotation={[0, Math.PI, 0]}>
-        <MainFace color={color} />
-      </group>
+      <MainFace />
+
+      {/* Back plane */}
+      <mesh position={[0, 0, -OBJECT_DEPTH / 2]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[1, 1]} />
+        <meshStandardMaterial color={SIDE_COLOR} />
+      </mesh>
     </group>
   );
 }

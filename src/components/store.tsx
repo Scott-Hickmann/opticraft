@@ -66,6 +66,15 @@ export function StoreProvider({ children }: StoreProviderProps) {
       }
     },
     {
+      type: 'beamSplitter',
+      key: '1209480130',
+      props: {
+        position: new THREE.Vector3(0, 0, 0),
+        rotation: new THREE.Euler(-Math.PI / 2, 0, 0),
+        scale: new THREE.Vector3(1, 1, 1)
+      }
+    },
+    {
       type: 'ray',
       key: '1294021582',
       props: {

@@ -2,26 +2,34 @@
 
 import { Environment } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useEffect } from 'react';
 import * as THREE from 'three';
 
 import { Layer } from '@/lib/config';
 
 import { getComponent } from './component';
 import { Controls } from './controls';
-import { Header } from './header';
-import styles from './scene.module.css';
-import { SidePanel } from './sidePanel';
 import { useStore } from './store';
 
 const Scene = () => {
   const { components } = useStore();
 
-  const camera = useThree((state) => state.camera);
+  const raycaster = useThree((state) => state.raycaster);
 
-  useFrame(() => {
-    camera.layers.enable(Layer.OBJECTS);
-    camera.layers.enable(Layer.VISUALIZATIONS);
-    camera.layers.enable(Layer.META);
+  useEffect(() => {
+    raycaster.layers.enable(Layer.META);
+  }, [raycaster]);
+
+  useFrame(({ scene, camera, gl }) => {
+    gl.autoClear = true;
+
+    // Step 1: Render ONLY Layer.OBJECTS (for the mirror)
+    camera.layers.set(Layer.OBJECTS);
+    gl.render(scene, camera);
+
+    // Step 2: Render everything else
+    camera.layers.enableAll();
+    gl.render(scene, camera);
   });
 
   return (
@@ -48,18 +56,14 @@ const Scene = () => {
 
 export const CanvasScene = () => {
   return (
-    <>
-      <Header />
-      <div className={styles.content}>
-        <Canvas
-          className={styles.canvas}
-          camera={{ position: [0, 0, 4], fov: 45 }}
-          scene={{ background: new THREE.Color(0x000000) }}
-        >
-          <Scene />
-        </Canvas>
-        <SidePanel />
-      </div>
-    </>
+    <div className="flex flex-1">
+      <Canvas
+        className="flex-1 h-full"
+        camera={{ position: [0, 0, 4], fov: 45 }}
+        scene={{ background: new THREE.Color(0x000000) }}
+      >
+        <Scene />
+      </Canvas>
+    </div>
   );
 };

@@ -26,7 +26,6 @@ export function useRay({
   useEffect(() => {
     // Initialize
     rayGroupRef.current = new THREE.Group();
-    rayGroupRef.current.layers.set(Layer.VISUALIZATIONS);
     rayMaterial.current = new THREE.LineBasicMaterial({ color });
 
     return () => {
@@ -85,17 +84,25 @@ export function useRay({
       });
 
     const raycaster = new THREE.Raycaster();
-    let currentOrigin = origin.clone();
-    let currentDirection = direction.clone().normalize();
-    let bounces = 0;
-    const maxBounces = 9999;
+    const maxDepth = 100;
 
     // Arrow helper configuration
     const arrowLength = 0.2;
     const headLength = 0.08;
     const arrowWidth = 0.08;
 
-    while (bounces < maxBounces) {
+    const currentRayMaterial = rayMaterial.current;
+    const currentRayGroup = rayGroupRef.current;
+
+    const bounce = (
+      depth: number,
+      currentOrigin: THREE.Vector3,
+      currentDirection: THREE.Vector3
+    ) => {
+      if (depth > maxDepth) {
+        return;
+      }
+
       raycaster.set(currentOrigin, currentDirection);
       const intersects = raycaster.intersectObjects(meshes, false);
 
@@ -107,11 +114,8 @@ export function useRay({
 
         // Create line segment
         segmentGeometry.setFromPoints([currentOrigin, hitPoint]);
-        const lineSegment = new THREE.Line(
-          segmentGeometry,
-          rayMaterial.current
-        );
-        rayGroupRef.current.add(lineSegment);
+        const lineSegment = new THREE.Line(segmentGeometry, currentRayMaterial);
+        currentRayGroup.add(lineSegment);
 
         // Add arrow at middle of segment
         const midPoint = new THREE.Vector3().lerpVectors(
@@ -135,11 +139,12 @@ export function useRay({
           headLength,
           arrowWidth
         );
-        arrow.layers.set(Layer.VISUALIZATIONS);
-        rayGroupRef.current.add(arrow);
+        currentRayGroup.add(arrow);
 
         const normal = intersection.face?.normal.clone() || new THREE.Vector3();
         normal.transformDirection(intersection.object.matrixWorld);
+
+        const newDirections: THREE.Vector3[] = [];
 
         if (intersection.object.type === 'Mesh') {
           const mesh = intersection.object as THREE.Mesh;
@@ -148,27 +153,31 @@ export function useRay({
 
           if (mesh.name === 'lens') {
             // Handle lens refraction
-            currentDirection = calculateRefraction(
-              currentDirection,
-              normal,
-              incidentAngle
+            newDirections.push(
+              calculateRefraction(currentDirection, normal, incidentAngle)
             );
           } else if (mesh.name === 'mirror') {
             // Handle regular reflection
-            currentDirection = currentDirection
-              .clone()
-              .reflect(normal)
-              .normalize();
-          } else {
-            // Stop ray
-            break;
+            newDirections.push(
+              currentDirection.clone().reflect(normal).normalize()
+            );
+          } else if (mesh.name === 'beamSplitter') {
+            newDirections.push(
+              currentDirection.clone(),
+              currentDirection.clone().reflect(normal).normalize()
+            );
+          } else if (mesh.name === 'transparent') {
+            // Ignore
+            newDirections.push(currentDirection.clone());
           }
         }
 
-        currentOrigin = hitPoint
-          .clone()
-          .addScaledVector(currentDirection, 0.001);
-        bounces++;
+        newDirections.forEach((direction) => {
+          const newHitPoint = hitPoint
+            .clone()
+            .addScaledVector(direction, 0.001);
+          bounce(depth + 1, newHitPoint, direction);
+        });
       } else {
         // Handle ray that doesn't hit anything
         const rayLength = 1000;
@@ -177,12 +186,8 @@ export function useRay({
           .add(currentDirection.clone().multiplyScalar(rayLength));
 
         segmentGeometry.setFromPoints([currentOrigin, farPoint]);
-        const lineSegment = new THREE.Line(
-          segmentGeometry,
-          rayMaterial.current
-        );
-        lineSegment.layers.set(Layer.VISUALIZATIONS);
-        rayGroupRef.current.add(lineSegment);
+        const lineSegment = new THREE.Line(segmentGeometry, currentRayMaterial);
+        currentRayGroup.add(lineSegment);
 
         const arrowDistance = 5;
         const midPoint = new THREE.Vector3().lerpVectors(
@@ -202,10 +207,14 @@ export function useRay({
           headLength,
           arrowWidth
         );
-        arrow.layers.set(Layer.VISUALIZATIONS);
-        rayGroupRef.current.add(arrow);
-        break;
+        currentRayGroup.add(arrow);
       }
-    }
+    };
+
+    bounce(0, origin.clone(), direction.clone().normalize());
+
+    rayGroupRef.current.traverse((child) => {
+      child.layers.set(Layer.VISUALIZATIONS);
+    });
   });
 }

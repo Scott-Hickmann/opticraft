@@ -49,7 +49,7 @@ export function Ray({
       name={name}
     >
       {/* Sphere at origin */}
-      <mesh position={[0, 0, 0]}>
+      <mesh position={[0, 0, 0]} layers={Layer.META}>
         <sphereGeometry args={[0.1, 8, 8]} />
         <meshStandardMaterial
           color={color}
@@ -61,7 +61,7 @@ export function Ray({
       </mesh>
 
       {/* Main ray beam */}
-      <mesh position={[0, 0.5, 0]}>
+      <mesh position={[0, 0.5, 0]} layers={Layer.META}>
         <cylinderGeometry args={[0.05, 0.05, 1, 8]} />
         <meshStandardMaterial
           color={color}
@@ -73,7 +73,7 @@ export function Ray({
       </mesh>
 
       {/* Arrow head */}
-      <mesh position={[0, 1, 0]}>
+      <mesh position={[0, 1, 0]} layers={Layer.META}>
         <coneGeometry args={[0.1, 0.2, 8]} />
         <meshStandardMaterial
           color={color}

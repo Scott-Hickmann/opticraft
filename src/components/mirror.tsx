@@ -1,12 +1,9 @@
 import '@react-three/fiber';
 
 import { MeshReflectorMaterial } from '@react-three/drei';
-// import { MeshReflectorMaterial as MeshReflectorMaterialImpl } from '@react-three/drei/materials/MeshReflectorMaterial';
-import { useFrame, useThree } from '@react-three/fiber';
-import { useRef } from 'react';
 import * as THREE from 'three';
 
-import { Layer, OBJECT_DEPTH, OBJECT_PADDING } from '@/lib/config';
+import { OBJECT_DEPTH, OBJECT_PADDING } from '@/lib/config';
 
 import { useStore } from './store';
 
@@ -20,19 +17,6 @@ export interface MirrorProps {
 const SIDE_COLOR = 0x0000ff;
 
 function MainFace() {
-  const scene = useThree((state) => state.scene);
-
-  useFrame(({ scene }) => {
-    const metaLayer = new THREE.Layers();
-    metaLayer.set(Layer.OBJECTS);
-    const metaObjects = scene.children.filter(
-      (child) => !metaLayer.test(child.layers)
-    );
-    metaObjects.forEach((object) => {
-      object.visible = true;
-    });
-  });
-
   return (
     <>
       {/* Front Planes */}
@@ -58,20 +42,7 @@ function MainFace() {
         <planeGeometry
           args={[1 - 2 * OBJECT_PADDING, 1 - 2 * OBJECT_PADDING]}
         />
-        <MeshReflectorMaterial
-          resolution={2048}
-          mirror={1}
-          onBeforeRender={() => {
-            const metaLayer = new THREE.Layers();
-            metaLayer.set(Layer.OBJECTS);
-            const metaObjects = scene.children.filter(
-              (child) => !metaLayer.test(child.layers)
-            );
-            metaObjects.forEach((object) => {
-              object.visible = false;
-            });
-          }}
-        />
+        <MeshReflectorMaterial resolution={2048} mirror={1} />
       </mesh>
     </>
   );
@@ -84,17 +55,14 @@ export function Mirror({
   scale = new THREE.Vector3(1, 1, 1)
 }: MirrorProps) {
   const { onObjectClick, onObjectMissed } = useStore();
-  const mirrorRef = useRef<THREE.Group>(null);
 
   return (
     <group
-      ref={mirrorRef}
       onClick={onObjectClick}
       onPointerMissed={onObjectMissed}
       position={position}
       rotation={rotation}
       scale={scale}
-      layers={Layer.OBJECTS}
       name={name}
     >
       {/* Side Planes */}
@@ -116,9 +84,11 @@ export function Mirror({
       </mesh>
 
       <MainFace />
-      <group rotation={[0, Math.PI, 0]}>
-        <MainFace />
-      </group>
+      {/* Back plane */}
+      <mesh position={[0, 0, -OBJECT_DEPTH / 2]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[1, 1]} />
+        <meshStandardMaterial color={SIDE_COLOR} />
+      </mesh>
     </group>
   );
 }

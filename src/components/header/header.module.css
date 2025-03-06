@@ -1,0 +1,11 @@
+.beamBlock {
+  border: 1px solid #ff0000;
+}
+
+.mirror {
+  border: 1px solid #0000ff;
+}
+
+.ray {
+  border: 1px solid #ffff00;
+}
