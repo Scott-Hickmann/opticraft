@@ -4,7 +4,8 @@ import {
   ArrowUpFromDot as RayIcon,
   FlipHorizontal as MirrorIcon,
   Split as BeamSplitterIcon,
-  SquareX as BeamBlockIcon
+  SquareX as BeamBlockIcon,
+  Search as LensIcon
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -32,6 +33,8 @@ export const HeaderItem = ({
         return 'border-2 border-[var(--color-ray)]';
       case 'beamSplitter':
         return 'border-2 border-[var(--color-beam-splitter)]';
+      case 'lens':
+        return 'border-2 border-[var(--color-lens)]';
       default:
         return '';
     }
@@ -68,6 +71,7 @@ export const Header = () => {
           type="beamSplitter"
           icon={BeamSplitterIcon}
         />
+        <HeaderItem label="Lens" type="lens" icon={LensIcon} />
       </div>
     </header>
   );

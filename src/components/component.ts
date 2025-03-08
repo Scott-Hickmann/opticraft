@@ -1,12 +1,15 @@
 import { BeamBlock, BeamBlockProps } from './beamBlock';
 import { BeamSplitter, BeamSplitterProps } from './beamSplitter';
+import { Lens, LensProps } from './lens';
 import { Mirror, MirrorProps } from './mirror';
 import { Ray, RayProps } from './ray';
+
 const typeToReactComponent = {
   beamBlock: BeamBlock,
   beamSplitter: BeamSplitter,
   mirror: Mirror,
-  ray: Ray
+  ray: Ray,
+  lens: Lens
 } as const;
 
 export function getComponent(type: ComponentType) {
@@ -41,10 +44,17 @@ export type BeamSplitterComponent = {
   props: Omit<BeamSplitterProps, 'name'>;
 };
 
+export type LensComponent = {
+  key: string;
+  type: 'lens';
+  props: Omit<LensProps, 'name'>;
+}
+
 export type ComponentType = keyof typeof typeToReactComponent;
 
 export type Component =
   | BeamBlockComponent
   | BeamSplitterComponent
   | MirrorComponent
-  | RayComponent;
+  | RayComponent
+  | LensComponent;

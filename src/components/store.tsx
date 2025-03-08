@@ -61,7 +61,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
       key: '1209480129',
       props: {
         position: new THREE.Vector3(0, 0, 0),
-        rotation: new THREE.Euler(-Math.PI / 2, 0, 0),
+        rotation: new THREE.Euler(-Math.PI / 2, -Math.PI / 2, 0),
         scale: new THREE.Vector3(1, 1, 1)
       }
     },
@@ -69,7 +69,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
       type: 'beamSplitter',
       key: '1209480130',
       props: {
-        position: new THREE.Vector3(0, 0, 0),
+        position: new THREE.Vector3(0, -2, 0),
         rotation: new THREE.Euler(-Math.PI / 2, 0, 0),
         scale: new THREE.Vector3(1, 1, 1)
       }
@@ -80,6 +80,15 @@ export function StoreProvider({ children }: StoreProviderProps) {
       props: {
         position: new THREE.Vector3(0, 0, -2),
         rotation: new THREE.Euler(Math.PI / 2, 0, 0),
+        scale: new THREE.Vector3(1, 1, 1)
+      }
+    },
+    { 
+      type: 'lens',
+      key: '53475687667',
+      props: {
+        position: new THREE.Vector3(2, 0, 0),
+        rotation: new THREE.Euler(0, 0, 0),
         scale: new THREE.Vector3(1, 1, 1)
       }
     }

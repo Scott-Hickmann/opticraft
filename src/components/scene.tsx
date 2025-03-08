@@ -35,7 +35,7 @@ const Scene = () => {
   return (
     <>
       <ambientLight intensity={Math.PI / 2} />
-      {/* Controls */}
+
       {components.map((component) => {
         const Component = getComponent(component.type);
         return (
