@@ -13,41 +13,95 @@ export interface LensProps {
   r1?: number;
   r2?: number;
   thickness?: number;
+  height?: number;
   ior?: number;
 }
 
-const LENS_COLOR = 0x00ffff;
+const LENS_COLOR = 0xffffff;
 
 export function Lens({
   name,
   position = new THREE.Vector3(),
   rotation = new THREE.Euler(),
   scale = new THREE.Vector3(1, 1, 1),
-  r1 = 1,
-  r2 = -1,
-  thickness = 0.5,
-  ior = 1
+  r1 = 0.25, // positive is convex, negative is concave
+  r2 = 0.25, // positive is convex, negative is concave
+  thickness = 0.25,
+  height = 0.5,
+  ior = 1.6
 }: LensProps) {
   const { onObjectClick, onObjectMissed } = useStore();
 
-  // Generate lathe points for the lens profile
-  const latheGeometry = useMemo(() => {
+  //   // Generate lathe points for the FRONT lens profile
+  const latheGeometryFront = useMemo(() => {
     const points: THREE.Vector2[] = [];
     const segments = 32;
 
+    // Ensure r is positive for convex and negative for concave
+    const R = r1;
+    const apertureRadius = height / 2;
+    // Lens curvature center
+    const centerY =
+      thickness / 2 + (R - Math.sqrt(R ** 2 - apertureRadius ** 2));
+
     // Front lens curvature
+    for (let i = 0; i <= segments; i++) {
+      const x = (i / segments) * apertureRadius; // horizontal axis
+      const y = centerY - Math.sqrt(R ** 2 - x ** 2); // Lens curvature equation
+      points.push(new THREE.Vector2(x, y));
+    }
+
+    return new THREE.LatheGeometry(points, 64);
+  }, [r1, thickness, height]);
+
+  // Generate lathe points for the FRONT lens profile
+  //   const latheGeometryFront = useMemo(() => {
+  //     const points: THREE.Vector2[] = [];
+  //     const segments = 32;
+
+  //     // Front lens curvature
+  //     for (let i = 0; i <= segments; i++) {
+  //       const angle = (i / segments) * Math.PI;
+  //       points.push(
+  //         new THREE.Vector2(
+  //           Math.cos(angle) * Math.abs(height),
+  //           Math.sin(angle) * r1
+  //         )
+  //       );
+  //     }
+
+  //     return new THREE.LatheGeometry(points, 64);
+  //   }, [r1, height]);
+
+  // Generate lathe points for the BACK lens profile
+  const latheGeometryBack = useMemo(() => {
+    const points: THREE.Vector2[] = [];
+    const segments = 32;
+
+    // Back lens curvature
     for (let i = 0; i <= segments; i++) {
       const angle = (i / segments) * Math.PI;
       points.push(
         new THREE.Vector2(
-          Math.cos(angle) * Math.abs(r1),
-          Math.sin(angle) * thickness
+          Math.cos(angle) * Math.abs(height),
+          Math.sin(angle) * r2
         )
       );
     }
 
     return new THREE.LatheGeometry(points, 64);
-  }, [r1, thickness]);
+  }, [r2, height]);
+
+  // Generate lathe points for the Middle cylinder  profile
+  const latheGeometryCylinder = useMemo(() => {
+    const points: THREE.Vector2[] = [];
+
+    // Middle cylinder profile
+    points.push(new THREE.Vector2(height, -thickness / 2)); // Bottom edge
+    points.push(new THREE.Vector2(height, thickness / 2)); // Top edge
+
+    return new THREE.LatheGeometry(points, 64);
+  }, [thickness, height]);
 
   return (
     <group
@@ -58,14 +112,56 @@ export function Lens({
       scale={scale}
       name={name}
     >
-      <mesh geometry={latheGeometry}>
+      <mesh
+        geometry={latheGeometryFront}
+        rotation={[0, 0, 0]}
+        position={[0, thickness / 2, 0]}
+      >
         <meshPhysicalMaterial
           color={LENS_COLOR}
           transparent
-          opacity={0.7}
+          opacity={1}
           roughness={0.1}
           metalness={0}
-          transmission={1} // Simulates realistic glass
+          transmission={1}
+          thickness={2}
+          specularIntensity={0.5}
+          ior={ior}
+        />
+      </mesh>
+
+      <mesh
+        geometry={latheGeometryCylinder}
+        rotation={[0, 0, 0]}
+        position={[0, 0, 0]}
+      >
+        <meshPhysicalMaterial
+          color={LENS_COLOR}
+          transparent
+          opacity={1}
+          roughness={0.1}
+          metalness={0}
+          transmission={1}
+          thickness={2}
+          specularIntensity={0.5}
+          ior={ior}
+        />
+      </mesh>
+
+      <mesh
+        geometry={latheGeometryBack}
+        rotation={[Math.PI, 0, 0]}
+        position={[0, -thickness / 2, 0]}
+      >
+        <meshPhysicalMaterial
+          color={LENS_COLOR}
+          transparent
+          opacity={1}
+          roughness={0.1}
+          metalness={0}
+          transmission={1}
+          thickness={2}
+          specularIntensity={0.5}
           ior={ior}
         />
       </mesh>
