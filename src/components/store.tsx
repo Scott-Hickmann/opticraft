@@ -23,7 +23,7 @@ interface StoreContextType {
   components: Component[];
   addComponent: (component: Component) => void;
   getComponent: (key: string) => Component | undefined;
-  updateComponent: (key: string, component: Component) => void;
+  updateComponent: (component: Component) => void;
   removeComponent: (key: string) => void;
 }
 
@@ -128,9 +128,9 @@ export function StoreProvider({ children }: StoreProviderProps) {
     }
   };
 
-  const updateComponent = (key: string, component: Component) => {
+  const updateComponent = (component: Component) => {
     setComponents((components) =>
-      components.map((c) => (c.key === key ? component : c))
+      components.map((c) => (c.key === component.key ? component : c))
     );
   };
 

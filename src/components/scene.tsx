@@ -7,7 +7,7 @@ import * as THREE from 'three';
 
 import { Layer } from '@/lib/config';
 
-import { getComponent } from './component';
+import { getReactComponent } from './component';
 import { Controls } from './controls';
 import { useStore } from './store';
 
@@ -37,7 +37,7 @@ const Scene = () => {
       <ambientLight intensity={Math.PI / 2} />
 
       {components.map((component) => {
-        const Component = getComponent(component.type);
+        const Component = getReactComponent(component.type);
         return (
           <Component
             key={component.key}

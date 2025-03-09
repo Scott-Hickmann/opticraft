@@ -9,6 +9,7 @@ import { useDebounceCallback } from 'usehooks-ts';
 
 import { Layer } from '@/lib/config';
 
+import { updateComponentProps } from './component';
 import { useStore } from './store';
 
 const TRANSLATE_KEY = 't';
@@ -76,15 +77,13 @@ export const Controls = () => {
   const onObjectChange = useDebounceCallback(
     () => {
       if (activeComponent && activeObject) {
-        updateComponent(activeComponent.key, {
-          ...activeComponent,
-          props: {
-            ...activeComponent.props,
+        updateComponent(
+          updateComponentProps(activeComponent, {
             position: activeObject.position,
             rotation: activeObject.rotation,
             scale: activeObject.scale
-          }
-        });
+          })
+        );
       }
     },
     100,

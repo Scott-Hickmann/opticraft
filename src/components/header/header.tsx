@@ -7,9 +7,8 @@ import {
   Split as BeamSplitterIcon,
   SquareX as BeamBlockIcon
 } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
 
-import { ComponentType } from '@/components/component';
+import { ComponentType, getNewComponent } from '@/components/component';
 import { useStore } from '@/components/store';
 
 export const HeaderItem = ({
@@ -43,13 +42,7 @@ export const HeaderItem = ({
   return (
     <button
       className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-gray-100 cursor-pointer dark:hover:bg-gray-800 ${getBorderClass()}`}
-      onClick={() =>
-        addComponent({
-          type,
-          key: uuidv4(),
-          props: {}
-        })
-      }
+      onClick={() => addComponent(getNewComponent(type))}
       title={`Add ${label}`}
     >
       {Icon && <Icon className="w-4 h-4" />}

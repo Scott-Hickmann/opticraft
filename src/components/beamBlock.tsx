@@ -9,9 +9,9 @@ import { useStore } from './store';
 
 export interface BeamBlockProps {
   name: string;
-  position?: THREE.Vector3;
-  rotation?: THREE.Euler;
-  scale?: THREE.Vector3;
+  position: THREE.Vector3;
+  rotation: THREE.Euler;
+  scale: THREE.Vector3;
 }
 
 const SIDE_COLOR = 0xff0000;
@@ -48,12 +48,7 @@ function MainFace() {
   );
 }
 
-export function BeamBlock({
-  name,
-  position = new THREE.Vector3(),
-  rotation = new THREE.Euler(),
-  scale = new THREE.Vector3(1, 1, 1)
-}: BeamBlockProps) {
+export function BeamBlock({ name, position, rotation, scale }: BeamBlockProps) {
   const { onObjectClick, onObjectMissed } = useStore();
   const mirrorRef = useRef<THREE.Group>(null);
 

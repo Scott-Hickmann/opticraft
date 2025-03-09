@@ -13,6 +13,7 @@ import {
   SidebarRail
 } from '@/components/ui/sidebar';
 
+import { updateComponentProps } from '../component';
 import { TransformSection, Vector3Item } from './transformSection';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -59,13 +60,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         break;
     }
 
-    updateComponent(activeComponent.key, {
-      ...activeComponent,
-      props: {
-        ...activeComponent.props,
-        ...updates
-      }
-    });
+    updateComponent(updateComponentProps(activeComponent, updates));
   };
 
   const handleRemoveComponent = () => {
