@@ -80,10 +80,13 @@ function safeRadius(r: number, height: number, thickness: number) {
   // TODO: Make sure concave lens doesn't go past midpoint
   const mag = Math.abs(r);
   const safeMag = mag < height / 2 ? height / 2 : mag;
-  if (r === 0) {
+  const safeNum = Math.sign(r) < 0 ? safeMag + 0.05 : safeMag;
+  console.log(safeNum);
+  if (mag === 0) {
     return Number.MAX_SAFE_INTEGER;
   }
-  return Math.sign(r) * safeMag;
+  console.log(Math.sign(r) * safeNum);
+  return Math.sign(r) * safeNum;
 }
 
 export function Lens({
