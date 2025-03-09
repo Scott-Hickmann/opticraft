@@ -59,7 +59,7 @@ export const CanvasScene = () => {
     <div className="flex flex-1">
       <Canvas
         className="flex-1 h-full"
-        camera={{ position: [0, 0, 4], fov: 45 }}
+        camera={{ position: [-2, 1.5, -1], fov: 80 }}
         scene={{ background: new THREE.Color(0x000000) }}
       >
         <Scene />

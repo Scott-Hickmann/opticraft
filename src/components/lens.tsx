@@ -85,7 +85,6 @@ function safeRadius(r: number, height: number, thickness: number) {
   if (mag === 0) {
     return Number.MAX_SAFE_INTEGER;
   }
-  console.log(Math.sign(r) * safeNum);
   return Math.sign(r) * safeNum;
 }
 

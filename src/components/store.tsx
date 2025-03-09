@@ -51,8 +51,8 @@ export function StoreProvider({ children }: StoreProviderProps) {
       type: 'mirror',
       key: '3123948214',
       props: {
-        position: new THREE.Vector3(0, -5, 0),
-        rotation: new THREE.Euler(-Math.PI / 2, 0, 0),
+        position: new THREE.Vector3(0, 0, 2),
+        rotation: new THREE.Euler(-Math.PI, Math.PI / 4, 0),
         scale: new THREE.Vector3(1, 1, 1)
       }
     },
@@ -60,8 +60,8 @@ export function StoreProvider({ children }: StoreProviderProps) {
       type: 'beamBlock',
       key: '1209480129',
       props: {
-        position: new THREE.Vector3(0, 0, 0),
-        rotation: new THREE.Euler(-Math.PI / 2, -Math.PI / 2, 0),
+        position: new THREE.Vector3(2, 0, 6),
+        rotation: new THREE.Euler(0, Math.PI, 0),
         scale: new THREE.Vector3(1, 1, 1)
       }
     },
@@ -69,7 +69,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
       type: 'beamSplitter',
       key: '1209480130',
       props: {
-        position: new THREE.Vector3(0, -2, 0),
+        position: new THREE.Vector3(2, 0, 2),
         rotation: new THREE.Euler(-Math.PI / 2, 0, 0),
         scale: new THREE.Vector3(1, 1, 1)
       }
@@ -84,11 +84,29 @@ export function StoreProvider({ children }: StoreProviderProps) {
       }
     },
     {
+      type: 'ray',
+      key: '1294021586',
+      props: {
+        position: new THREE.Vector3(0, 0.1, -2),
+        rotation: new THREE.Euler(Math.PI / 2, 0, 0),
+        scale: new THREE.Vector3(1, 1, 1)
+      }
+    },
+    {
+      type: 'ray',
+      key: '1294021589',
+      props: {
+        position: new THREE.Vector3(0, -0.1, -2),
+        rotation: new THREE.Euler(Math.PI / 2, 0, 0),
+        scale: new THREE.Vector3(1, 1, 1)
+      }
+    },
+    {
       type: 'lens',
       key: '53475687667',
       props: {
-        position: new THREE.Vector3(2, 0, 0),
-        rotation: new THREE.Euler(0, 0, 0),
+        position: new THREE.Vector3(2, 0, 4),
+        rotation: new THREE.Euler(Math.PI / 2, 0, 0),
         scale: new THREE.Vector3(1, 1, 1),
         r1: 0.5, // positive is convex, negative is concave
         r2: 0.5, // positive is convex, negative is concave
