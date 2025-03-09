@@ -126,7 +126,7 @@ body {
   --color-ray: oklch(0.769 0.188 70.08);
   --color-beam-block: oklch(0.645 0.246 16.439);
   --color-beam-splitter: oklch(0.696 0.17 162.48);
-  --color-lens: oklch(0.9054 0.1157 194.7689);
+  --color-lens: oklch(0.78 0.135 194.77);
 }
 
 @layer base {

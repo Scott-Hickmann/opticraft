@@ -17,17 +17,41 @@ export interface LensProps {
   ior: number;
 }
 
-const LENS_COLOR = 0xffffff;
+const LENS_COLOR = 0x00ffff;
+
+function radiusCenterToLensCenter(r: number, height: number) {
+  return Math.sqrt(r ** 2 - height ** 2 / 4);
+}
+
+function lensFaceDepth(r: number, height: number) {
+  return Math.abs(r) - radiusCenterToLensCenter(r, height);
+}
+
+function safeRadius(r: number, height: number, thickness: number) {
+  const mag = Math.abs(r);
+  const safeMag = mag < height / 2 ? height / 2 : mag;
+  if (mag === 0) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  const safeR = Math.sign(r) * safeMag;
+  // Make sure concave lens doesn't go past midpoint, set to the closest safe radius
+  // Assume thickness is slightly less than it actually is for the sake of safety
+  const safeThickness = thickness - 0.01;
+  if (safeR < 0 && lensFaceDepth(safeR, height) > safeThickness / 2) {
+    return -((height * height) / (4 * safeThickness) + safeThickness / 4);
+  }
+  return safeR;
+}
 
 function LensFace({
-  R,
+  r,
   ior,
   height,
   thickness,
   front,
   reversed
 }: {
-  R: number;
+  r: number;
   ior: number;
   height: number;
   thickness: number;
@@ -38,15 +62,15 @@ function LensFace({
   const latheGeometry = useMemo(() => {
     const points: THREE.Vector2[] = [];
     const segments = 32;
-    const phi = Math.asin(height / (2 * R));
+    const phi = Math.asin(height / (2 * r));
     for (let i = 0; i <= segments; i++) {
       const t = reversed ? i / segments : 1 - i / segments;
       const theta = t * phi;
-      points.push(new THREE.Vector2(R * Math.sin(theta), R * Math.cos(theta)));
+      points.push(new THREE.Vector2(r * Math.sin(theta), r * Math.cos(theta)));
     }
 
     return new THREE.LatheGeometry(points, 64);
-  }, [R, height, reversed]);
+  }, [r, height, reversed]);
 
   return (
     <mesh
@@ -54,14 +78,14 @@ function LensFace({
       rotation={front ? [0, 0, 0] : [Math.PI, 0, 0]}
       position={[
         0,
-        (-Math.sign(R) * Math.sqrt(R ** 2 - height ** 2 / 4) + thickness / 2) *
+        (-Math.sign(r) * radiusCenterToLensCenter(r, height) + thickness / 2) *
           (front ? 1 : -1),
         0
       ]}
       name={reversed ? 'lensExit' : 'lensEnter'}
     >
       <meshPhysicalMaterial
-        color={LENS_COLOR}
+        color={0xffffff}
         transparent
         opacity={1}
         roughness={0.1}
@@ -73,19 +97,6 @@ function LensFace({
       />
     </mesh>
   );
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function safeRadius(r: number, height: number, thickness: number) {
-  // TODO: Make sure concave lens doesn't go past midpoint
-  const mag = Math.abs(r);
-  const safeMag = mag < height / 2 ? height / 2 : mag;
-  const safeNum = Math.sign(r) < 0 ? safeMag + 0.05 : safeMag;
-  console.log(safeNum);
-  if (mag === 0) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-  return Math.sign(r) * safeNum;
 }
 
 export function Lens({
@@ -124,7 +135,7 @@ export function Lens({
       name={name}
     >
       <LensFace
-        R={safeR1}
+        r={safeR1}
         thickness={thickness}
         height={height}
         ior={ior}
@@ -132,7 +143,7 @@ export function Lens({
         reversed={false}
       />
       <LensFace
-        R={safeR2}
+        r={safeR2}
         thickness={thickness}
         height={height}
         ior={ior}
@@ -140,7 +151,7 @@ export function Lens({
         reversed={false}
       />
       <LensFace
-        R={safeR1}
+        r={safeR1}
         thickness={thickness}
         height={height}
         ior={ior}
@@ -148,7 +159,7 @@ export function Lens({
         reversed={true}
       />
       <LensFace
-        R={safeR2}
+        r={safeR2}
         thickness={thickness}
         height={height}
         ior={ior}
@@ -160,7 +171,7 @@ export function Lens({
         rotation={[0, 0, 0]}
         position={[0, 0, 0]}
       >
-        <meshStandardMaterial color={0x00ffff} />
+        <meshStandardMaterial color={LENS_COLOR} transparent opacity={0.5} />
       </mesh>
     </group>
   );
