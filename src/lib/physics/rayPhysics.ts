@@ -3,18 +3,17 @@ import * as THREE from 'three';
 export function calculateRefraction(
   currentDirection: THREE.Vector3,
   normal: THREE.Vector3,
-  incidentAngle: number
+  ior = 1,
+  isExiting: boolean
 ) {
   let n1: number, n2: number;
-  const isExiting = incidentAngle > 90;
-
   if (isExiting) {
-    n1 = 1.5; // Glass
+    n1 = ior; // Lens
     n2 = 1.0; // Air
     normal.negate();
   } else {
     n1 = 1.0; // Air
-    n2 = 1.5; // Glass
+    n2 = ior; // Lens
   }
 
   const eta = n1 / n2;

@@ -21,7 +21,7 @@ export function useRay({
   const rayGroupRef = useRef<THREE.Group | null>(null);
   const rayMaterial = useRef<THREE.LineBasicMaterial | null>(null);
 
-  const { components } = useStore();
+  const { components, getComponent } = useStore();
 
   useEffect(() => {
     // Initialize
@@ -144,34 +144,38 @@ export function useRay({
         const normal = intersection.face?.normal.clone() || new THREE.Vector3();
         normal.transformDirection(intersection.object.matrixWorld);
 
-        const newDirections: THREE.Vector3[] = [];
-
-        if (intersection.object.type === 'Mesh') {
-          const mesh = intersection.object as THREE.Mesh;
-          const incidentAngle =
-            Math.acos(normal.dot(currentDirection)) * (180 / Math.PI);
-
-          if (mesh.name === 'lens') {
-            // Handle lens refraction
-            newDirections.push(
-              calculateRefraction(currentDirection, normal, incidentAngle)
-            );
-          } else if (mesh.name === 'mirror') {
-            // Handle regular reflection
-            newDirections.push(
-              currentDirection.clone().reflect(normal).normalize()
-            );
-          } else if (mesh.name === 'beamSplitter') {
-            newDirections.push(
-              currentDirection.clone(),
-              currentDirection.clone().reflect(normal).normalize()
-            );
-          } else if (mesh.name === 'transparent') {
-            // Ignore
-            newDirections.push(currentDirection.clone());
+        const getNewDirections = () => {
+          if (intersection.object.type === 'Mesh') {
+            const mesh = intersection.object as THREE.Mesh;
+            if (mesh.name === 'lensEnter' || mesh.name === 'lensExit') {
+              const lensKey = mesh.parent?.name;
+              if (!lensKey) return;
+              const lensComponent = getComponent(lensKey);
+              if (!lensComponent || lensComponent.type !== 'lens') return;
+              return [
+                calculateRefraction(
+                  currentDirection,
+                  normal,
+                  lensComponent.props.ior,
+                  mesh.name === 'lensExit'
+                )
+              ];
+            } else if (mesh.name === 'mirror') {
+              // Handle regular reflection
+              return [currentDirection.clone().reflect(normal).normalize()];
+            } else if (mesh.name === 'beamSplitter') {
+              return [
+                currentDirection.clone(),
+                currentDirection.clone().reflect(normal).normalize()
+              ];
+            } else if (mesh.name === 'transparent') {
+              // Ignore
+              return [currentDirection.clone()];
+            }
           }
-        }
+        };
 
+        const newDirections = getNewDirections() ?? [];
         newDirections.forEach((direction) => {
           const newHitPoint = hitPoint
             .clone()

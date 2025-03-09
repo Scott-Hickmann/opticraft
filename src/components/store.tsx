@@ -89,7 +89,12 @@ export function StoreProvider({ children }: StoreProviderProps) {
       props: {
         position: new THREE.Vector3(2, 0, 0),
         rotation: new THREE.Euler(0, 0, 0),
-        scale: new THREE.Vector3(1, 1, 1)
+        scale: new THREE.Vector3(1, 1, 1),
+        r1: 0.5, // positive is convex, negative is concave
+        r2: 0.5, // positive is convex, negative is concave
+        thickness: 0.1,
+        height: 0.5,
+        ior: 1.6
       }
     }
   ]);
