@@ -3,9 +3,9 @@
 import {
   ArrowUpFromDot as RayIcon,
   FlipHorizontal as MirrorIcon,
+  Search as LensIcon,
   Split as BeamSplitterIcon,
-  SquareX as BeamBlockIcon,
-  Search as LensIcon
+  SquareX as BeamBlockIcon
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 

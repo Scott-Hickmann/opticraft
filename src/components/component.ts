@@ -48,7 +48,7 @@ export type LensComponent = {
   key: string;
   type: 'lens';
   props: Omit<LensProps, 'name'>;
-}
+};
 
 export type ComponentType = keyof typeof typeToReactComponent;
 

@@ -83,7 +83,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
         scale: new THREE.Vector3(1, 1, 1)
       }
     },
-    { 
+    {
       type: 'lens',
       key: '53475687667',
       props: {
