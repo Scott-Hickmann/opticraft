@@ -9,7 +9,7 @@ import { useDebounceCallback } from 'usehooks-ts';
 
 import { Layer } from '@/lib/config';
 
-import { updateComponentProps } from './component';
+import { canScale, updateComponentProps } from './component';
 import { useStore } from './store';
 
 const TRANSLATE_KEY = 't';
@@ -99,6 +99,14 @@ export const Controls = () => {
       (transformControlsRef.current as any).raycaster.layers.set(Layer.META);
     }
   });
+
+  const isScalable = activeComponent ? canScale(activeComponent?.type) : false;
+
+  useEffect(() => {
+    if (!isScalable && mode === 'scale') {
+      setMode('translate');
+    }
+  }, [isScalable, mode]);
 
   return (
     <>

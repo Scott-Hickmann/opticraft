@@ -13,7 +13,8 @@ import {
   SidebarRail
 } from '@/components/ui/sidebar';
 
-import { updateComponentProps } from '../component';
+import { canScale, updateComponentProps } from '../component';
+import { LensSection } from './lensSection';
 import { TransformSection, Vector3Item } from './transformSection';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -94,15 +95,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           z: ((rotation?.z ?? 0) * 180) / Math.PI
         }
       },
-      {
-        name: 'Scale',
-        icon: Scale3D,
-        vector: {
-          x: scale?.x ?? 1,
-          y: scale?.y ?? 1,
-          z: scale?.z ?? 1
-        }
-      }
+      ...(canScale(activeComponent.type)
+        ? [
+            {
+              name: 'Scale',
+              icon: Scale3D,
+              vector: {
+                x: scale?.x ?? 1,
+                y: scale?.y ?? 1,
+                z: scale?.z ?? 1
+              }
+            }
+          ]
+        : [])
     ];
   }, [activeComponent]);
 
@@ -113,11 +118,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <div className="pl-2 font-semibold text-lg">Editor</div>
         </SidebarHeader>
         {currentVectors ? (
-          <TransformSection
-            items={currentVectors}
-            onVectorChange={handleVectorChange}
-            onRemove={active ? handleRemoveComponent : undefined}
-          />
+          <>
+            <TransformSection
+              items={currentVectors}
+              onVectorChange={handleVectorChange}
+              onRemove={active ? handleRemoveComponent : undefined}
+            />
+            {activeComponent?.type === 'lens' && (
+              <LensSection
+                r1={activeComponent.props.r1}
+                r2={activeComponent.props.r2}
+                ior={activeComponent.props.ior}
+                height={activeComponent.props.height}
+                thickness={activeComponent.props.thickness}
+                onChange={(prop, value) => {
+                  updateComponent(
+                    updateComponentProps(activeComponent, {
+                      [prop]: value
+                    })
+                  );
+                }}
+              />
+            )}
+          </>
         ) : (
           <SidebarGroupLabel className="pl-4">
             No objects selected

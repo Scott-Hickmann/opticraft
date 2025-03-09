@@ -75,6 +75,17 @@ function LensFace({
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function safeRadius(r: number, height: number, thickness: number) {
+  // TODO: Make sure concave lens doesn't go past midpoint
+  const mag = Math.abs(r);
+  const safeMag = mag < height / 2 ? height / 2 : mag;
+  if (r === 0) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return Math.sign(r) * safeMag;
+}
+
 export function Lens({
   name,
   position = new THREE.Vector3(),
@@ -98,6 +109,9 @@ export function Lens({
     return new THREE.LatheGeometry(points, 64);
   }, [thickness, height]);
 
+  const safeR1 = safeRadius(r1, height, thickness);
+  const safeR2 = safeRadius(r2, height, thickness);
+
   return (
     <group
       onClick={onObjectClick}
@@ -108,7 +122,7 @@ export function Lens({
       name={name}
     >
       <LensFace
-        R={r1}
+        R={safeR1}
         thickness={thickness}
         height={height}
         ior={ior}
@@ -116,7 +130,7 @@ export function Lens({
         reversed={false}
       />
       <LensFace
-        R={r2}
+        R={safeR2}
         thickness={thickness}
         height={height}
         ior={ior}
@@ -124,7 +138,7 @@ export function Lens({
         reversed={false}
       />
       <LensFace
-        R={r1}
+        R={safeR1}
         thickness={thickness}
         height={height}
         ior={ior}
@@ -132,7 +146,7 @@ export function Lens({
         reversed={true}
       />
       <LensFace
-        R={r2}
+        R={safeR2}
         thickness={thickness}
         height={height}
         ior={ior}

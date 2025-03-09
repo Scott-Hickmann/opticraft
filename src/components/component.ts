@@ -98,7 +98,7 @@ export function updateComponentProps<T extends ComponentType>(
 }
 
 export function canScale(type: ComponentType) {
-  return type !== 'ray';
+  return type !== 'ray' && type !== 'lens';
 }
 
 export type BeamBlockComponent = {
